@@ -1,101 +1,113 @@
-import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 
-export default function Home() {
+export default async function LandingPage() {
+  const supabase = createClient();
+
+  const { data: listings } = await supabase
+    .from("listings")
+    .select("*")
+    .eq("status", "active")
+    .limit(8);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <main className="min-h-screen bg-brand-dark text-white">
+      {/* Navbar */}
+      <nav className="flex items-center justify-between px-6 py-4">
+        <span className="text-brand-yellow font-bold text-2xl tracking-widest uppercase">
+          DRENZ
+        </span>
+        <Link
+          href="/login"
+          className="bg-white text-black text-sm font-medium px-4 py-2 rounded-full"
+        >
+          Join Campus
+        </Link>
+      </nav>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      {/* Hero */}
+      <section className="px-6 py-10">
+        <div className="bg-brand-card rounded-3xl p-8 min-h-[400px] relative overflow-hidden">
+          <span className="border border-white/30 text-white text-xs px-3 py-1 rounded-full mb-6 inline-block">
+            KIIT
+          </span>
+          <h1 className="text-5xl font-black uppercase leading-tight">
+            WEAR IT.<br />
+            <span className="text-brand-yellow">PASS IT.</span><br />
+            LIST IT.
+          </h1>
+          <p className="text-white/60 text-sm mt-4 max-w-xs">
+            Keep the campus cycle moving with curated fashion that gets worn,
+            passed on, and listed again with trust.
+          </p>
+
+          {/* Stats */}
+          <div className="flex gap-3 mt-8">
+            {[
+              { value: "99+", label: "students" },
+              { value: "69%", label: "signed up" },
+              { value: "✓", label: "verified" },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="bg-black/30 rounded-2xl px-4 py-3 text-center min-w-[80px]"
+              >
+                <div className="text-brand-yellow font-bold text-lg">{stat.value}</div>
+                <div className="text-white/50 text-xs">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <Link
+            href="/login"
+            className="mt-8 inline-block bg-brand-yellow text-black font-semibold px-8 py-4 rounded-2xl w-full text-center"
           >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            Join your campus →
+          </Link>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </section>
+
+      {/* Ticker */}
+      <div className="bg-brand-ticker text-black text-xs font-bold py-2 px-4 flex gap-6 overflow-hidden whitespace-nowrap">
+        {["ZERO SCAMS", "QUALITY VERIFIED", "KIIT", "STUDENT ID VERIFIED", "CAMPUS PICKUP"].map((item) => (
+          <span key={item}>+ {item}</span>
+        ))}
+      </div>
+
+      {/* Category Pills */}
+      <section className="px-6 mt-6">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {["All", "Tops", "Bottoms", "Shoes", "Bags", "Accessories"].map((cat) => (
+            <button
+              key={cat}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
+                cat === "All"
+                  ? "bg-black text-white"
+                  : "bg-white/10 text-white"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Listings Grid */}
+      <section className="px-6 mt-6 grid grid-cols-2 gap-4 pb-24">
+        {listings?.map((listing) => (
+          <div key={listing.id} className="bg-white/5 rounded-2xl overflow-hidden">
+            <div className="bg-white/10 h-40 flex items-center justify-center">
+              <span className="text-4xl">👕</span>
+            </div>
+            <div className="p-3">
+              <span className="text-green-400 text-xs font-bold">VERIFIED</span>
+              <p className="text-white text-sm font-medium mt-1">{listing.title}</p>
+              <p className="text-brand-yellow font-bold mt-1">₹{listing.price}</p>
+            </div>
+          </div>
+        ))}
+      </section>
+    </main>
   );
 }
