@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import BottomNav from "@/components/BottomNav";
 import Link from "next/link";
 
 export default async function LandingPage() {
@@ -80,7 +81,12 @@ export default async function LandingPage() {
 
       {/* Listings Grid */}
       <section className="px-6 mt-6 grid grid-cols-2 gap-4 pb-24">
-        {listings?.map((listing) => (
+        {(listings && listings.length > 0 ? listings : [
+          { id: 1, title: "H&M Hoodie", price: 349, status: "active" },
+          { id: 2, title: "Levi's Jeans", price: 599, status: "active" },
+          { id: 3, title: "Nike Sneakers", price: 799, status: "active" },
+          { id: 4, title: "Zara Jacket", price: 450, status: "active" },
+        ]).map((listing) => (
           <div key={listing.id} className="bg-white/5 rounded-2xl overflow-hidden">
             <div className="bg-white/10 h-40 flex items-center justify-center">
               <span className="text-4xl">👕</span>
@@ -93,6 +99,8 @@ export default async function LandingPage() {
           </div>
         ))}
       </section>
+
+      <BottomNav unreadCount={3} />
     </main>
   );
 }
