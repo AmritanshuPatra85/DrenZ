@@ -25,7 +25,7 @@ function generateOtp(): string {
 }
 
 // Temporary OTP store (use Redis in production)
-export const otpStore = new Map<string, { otp: string; expiresAt: number }>();
+const otpStore = new Map<string, { otp: string; expiresAt: number }>();
 
 export async function POST(request: Request) {
   try {
