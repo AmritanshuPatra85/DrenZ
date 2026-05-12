@@ -41,22 +41,7 @@ export default async function LandingPage() {
             passed on, and listed again with trust.
           </p>
 
-          {/* Stats */}
-          <div className="flex gap-3 mt-8">
-            {[
-              { value: "99+", label: "students" },
-              { value: "69%", label: "signed up" },
-              { value: "✓", label: "verified" },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-black/30 rounded-2xl px-4 py-3 text-center min-w-[80px]"
-              >
-                <div className="text-brand-yellow font-bold text-lg">{stat.value}</div>
-                <div className="text-white/50 text-xs">{stat.label}</div>
-              </div>
-            ))}
-          </div>
+
 
           {/* CTA */}
           <Link
