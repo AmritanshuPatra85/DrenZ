@@ -5,8 +5,8 @@ import { createBrowserClient } from "@supabase/ssr";
 import ListingCard from "@/components/ListingCard";
 import BottomNav from "@/components/BottomNav";
 
-const CATEGORIES  = ["All", "Tops", "Bottoms", "Shoes", "Bags", "Accessories"];
-const CONDITIONS  = ["Any", "Like New", "Good", "Fair"];
+const CATEGORIES = ["All", "Tops", "Bottoms", "Shoes", "Bags", "Accessories"];
+const CONDITIONS = ["Any", "Like New", "Good", "Fair"];
 
 const FALLBACK = [
   { id: "1", title: "H&M Oversized Hoodie", price: 349, size: "M",  condition: "Good",     seller_alias: "shadow_panda", seller_dept: "CSE" },
@@ -21,7 +21,6 @@ export default function SearchPage() {
   const [query,      setQuery]      = useState("");
   const [category,   setCategory]   = useState("All");
   const [condition,  setCondition]  = useState("Any");
-  const [minPrice,   setMinPrice]   = useState(0);
   const [maxPrice,   setMaxPrice]   = useState(2000);
   const [showFilter, setShowFilter] = useState(false);
   const [results,    setResults]    = useState<any[]>([]);
@@ -34,12 +33,10 @@ export default function SearchPage() {
 
   const search = useCallback(async () => {
     setLoading(true);
-
     let q = supabase
       .from("listings")
       .select("id, title, price, size, condition, category, image_url, seller:users(alias, dept)")
       .eq("status", "active")
-      .gte("price", minPrice)
       .lte("price", maxPrice);
 
     if (query.trim())        q = q.ilike("title", `%${query.trim()}%`);
@@ -58,9 +55,8 @@ export default function SearchPage() {
       })));
     }
     setLoading(false);
-  }, [query, category, condition, minPrice, maxPrice]);
+  }, [query, category, condition, maxPrice]);
 
-  // Debounce search on query change
   useEffect(() => {
     const t = setTimeout(search, 400);
     return () => clearTimeout(t);
@@ -69,14 +65,11 @@ export default function SearchPage() {
   const clearAll = () => {
     setCategory("All");
     setCondition("Any");
-    setMinPrice(0);
     setMaxPrice(2000);
   };
 
   return (
     <main className="min-h-screen bg-brand-dark text-white pb-24">
-
-      {/* Search bar */}
       <div className="px-4 pt-6 pb-3 flex items-center gap-3">
         <div className="flex-1 flex items-center bg-brand-card border border-white/10 rounded-2xl px-4 gap-3">
           <span className="text-white/40 text-lg">🔍</span>
@@ -93,4 +86,73 @@ export default function SearchPage() {
         </div>
         <button
           onClick={() => setShowFilter(!showFilter)}
-          className={`px-4 py-3 rounded-2xl text-sm font-semibold border transition-col
+          className={`px-4 py-3 rounded-2xl text-sm font-semibold border transition-colors ${
+            showFilter ? "bg-brand-yellow text-black border-brand-yellow" : "bg-brand-card border-white/10 text-white/60"
+          }`}
+        >
+          Filter
+        </button>
+      </div>
+
+      {showFilter && (
+        <div className="mx-4 mb-4 bg-brand-card border border-white/10 rounded-2xl p-4 space-y-4">
+          <div>
+            <p className="text-white/50 text-xs font-semibold mb-2 uppercase tracking-widest">Category</p>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map(cat => (
+                <button key={cat} onClick={() => setCategory(cat)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                    category === cat ? "bg-brand-yellow text-black" : "bg-white/10 text-white/60"
+                  }`}
+                >{cat}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-white/50 text-xs font-semibold mb-2 uppercase tracking-widest">Condition</p>
+            <div className="flex gap-2">
+              {CONDITIONS.map(c => (
+                <button key={c} onClick={() => setCondition(c)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                    condition === c ? "bg-brand-yellow text-black" : "bg-white/10 text-white/60"
+                  }`}
+                >{c}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-white/50 text-xs font-semibold mb-2 uppercase tracking-widest">Max Price — ₹{maxPrice}</p>
+            <input type="range" min={0} max={2000} step={50} value={maxPrice}
+              onChange={e => setMaxPrice(Number(e.target.value))}
+              className="w-full accent-brand-yellow"
+            />
+          </div>
+          <button onClick={clearAll} className="w-full text-center text-white/40 text-xs font-semibold py-2 border border-white/10 rounded-xl">
+            Clear all filters
+          </button>
+        </div>
+      )}
+
+      <div className="px-4 mb-3">
+        <p className="text-white/30 text-xs">{loading ? "Searching…" : `${results.length} results`}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 px-4">
+        {results.map(listing => (
+          <ListingCard key={listing.id} listing={listing} />
+        ))}
+      </div>
+
+      {!loading && results.length === 0 && (
+        <div className="text-center mt-20">
+          <p className="text-4xl mb-4">🔍</p>
+          <p className="text-white/40 text-sm">No listings found</p>
+          <button onClick={clearAll} className="mt-4 text-brand-yellow text-sm font-semibold">Clear filters</button>
+        </div>
+      )}
+
+      <BottomNav />
+    </main>
+  );
+}
+
