@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import BottomNav from "@/components/BottomNav";
+import PhotoGallery from "@/components/PhotoGallery";
 
 const CONDITION_STYLES: Record<string, { bg: string; text: string }> = {
   "Like New": { bg: "bg-green-950",  text: "text-green-400"  },
@@ -22,6 +23,7 @@ export default function ListingDetail() {
   const router   = useRouter();
   const [listing, setListing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,6 +39,8 @@ export default function ListingDetail() {
         .single();
 
       setListing(data ? { ...data, seller_alias: data.seller?.alias, seller_dept: data.seller?.dept, seller_year: data.seller?.year } : FALLBACK);
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsOwner(user?.id === data?.seller_id);
       setLoading(false);
     };
     fetch();
@@ -61,13 +65,12 @@ export default function ListingDetail() {
         </button>
       </div>
 
-      {/* Photo */}
-      <div className="mx-4 bg-brand-card rounded-2xl h-72 flex items-center justify-center border border-white/5">
-        {listing.image_url ? (
-          <img src={listing.image_url} alt={listing.title} className="w-full h-full object-cover rounded-2xl" />
-        ) : (
-          <span className="text-8xl">👕</span>
-        )}
+      {/* Photo Gallery */}
+      <div className="mx-4">
+        <PhotoGallery
+          images={listing.image_urls ?? (listing.image_url ? [listing.image_url] : [])}
+          alt={listing.title}
+        />
       </div>
 
       {/* Info */}
