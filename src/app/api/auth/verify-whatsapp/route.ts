@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { authSchema } from "@/lib/validations";
 
@@ -25,7 +24,7 @@ function generateOtp(): string {
 }
 
 // Temporary OTP store (use Redis in production)
-const otpStore = new Map<string, { otp: string; expiresAt: number }>();
+export const otpStore = new Map<string, { otp: string; expiresAt: number }>();
 
 export async function POST(request: Request) {
   try {
