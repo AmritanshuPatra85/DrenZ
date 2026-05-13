@@ -8,12 +8,12 @@ import BottomNav from "@/components/BottomNav";
 const CATEGORIES = ["All", "Tops", "Bottoms", "Shoes", "Bags", "Accessories"];
 
 const FALLBACK = [
-  { id: "1", title: "H&M Oversized Hoodie", price: 349, size: "M",  condition: "Good",     seller_alias: "shadow_panda", seller_dept: "CSE" },
-  { id: "2", title: "Levi's 511 Jeans",     price: 599, size: "30", condition: "Like New", seller_alias: "cool_tiger",   seller_dept: "ECE" },
-  { id: "3", title: "Nike Tanjun Sneakers", price: 799, size: "9",  condition: "Good",     seller_alias: "lazy_fox",     seller_dept: "MBA" },
-  { id: "4", title: "Zara Crop Jacket",     price: 450, size: "S",  condition: "Fair",     seller_alias: "quick_owl",    seller_dept: "BCA" },
-  { id: "5", title: "Formal Shirt White",   price: 199, size: "L",  condition: "Like New", seller_alias: "wise_bear",    seller_dept: "CSE" },
-  { id: "6", title: "Palazzo Pants Black",  price: 275, size: "XS", condition: "Good",     seller_alias: "bold_lynx",    seller_dept: "BBA" },
+  { id: "1", title: "H&M Oversized Hoodie", price: 349, size: "M",  condition: "Good",     category: "Tops",        seller_alias: "shadow_panda", seller_dept: "CSE" },
+  { id: "2", title: "Levi's 511 Jeans",     price: 599, size: "30", condition: "Like New", category: "Bottoms",     seller_alias: "cool_tiger",   seller_dept: "ECE" },
+  { id: "3", title: "Nike Tanjun Sneakers", price: 799, size: "9",  condition: "Good",     category: "Shoes",       seller_alias: "lazy_fox",     seller_dept: "MBA" },
+  { id: "4", title: "Zara Crop Jacket",     price: 450, size: "S",  condition: "Fair",     category: "Outerwear",   seller_alias: "quick_owl",    seller_dept: "BCA" },
+  { id: "5", title: "Formal Shirt White",   price: 199, size: "L",  condition: "Like New", category: "Tops",        seller_alias: "wise_bear",    seller_dept: "CSE" },
+  { id: "6", title: "Palazzo Pants Black",  price: 275, size: "XS", condition: "Good",     category: "Bottoms",     seller_alias: "bold_lynx",    seller_dept: "BBA" },
 ];
 
 export default function HomeFeed() {
