@@ -15,7 +15,7 @@ const CONDITION_STYLES: Record<string, { bg: string; text: string }> = {
 const FALLBACK = {
   id: "1", title: "H&M Oversized Hoodie", price: 349, size: "M",
   condition: "Good", category: "Tops", description: "Worn twice, great condition. Perfect for campus.",
-  image_url: null, seller_alias: "shadow_panda", seller_dept: "CSE", seller_year: "2nd Year",
+  image_url: null, seller_id: null, seller_alias: "shadow_panda", seller_dept: "CSE", seller_year: "2nd Year",
 };
 
 export default function ListingDetail() {
@@ -23,18 +23,19 @@ export default function ListingDetail() {
   const router   = useRouter();
   const [listing, setListing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isOwner, setIsOwner] = useState(false);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
+  const [isOwner, setIsOwner] = useState(false);
+
   useEffect(() => {
     const fetch = async () => {
       const { data } = await supabase
         .from("listings")
-        .select("id, title, price, size, condition, category, description, image_url, seller:users(alias, dept, year)")
+        .select("id, seller_id, title, price, size, condition, category, description, image_url, seller:users(alias, dept, year)")
         .eq("id", id)
         .single();
 
@@ -116,17 +117,40 @@ export default function ListingDetail() {
 
       {/* Action buttons — fixed at bottom */}
       <div className="fixed bottom-16 left-0 right-0 px-4 pb-2 bg-brand-dark border-t border-white/5 pt-3">
-        <button className="w-full bg-brand-yellow text-black font-bold text-base py-4 rounded-2xl mb-2">
-          Buy Now
-        </button>
-        <div className="flex gap-3">
-          <button className="flex-1 bg-brand-card border border-white/10 text-white font-semibold text-sm py-3 rounded-2xl">
-            💬 Message
-          </button>
-          <button className="flex-1 bg-brand-card border border-white/10 text-white font-semibold text-sm py-3 rounded-2xl">
-            🤝 Make Offer
-          </button>
-        </div>
+        {isOwner ? (
+          <>
+            <div className="flex gap-3 mb-2">
+              <button className="flex-1 bg-brand-yellow text-black font-bold text-sm py-3 rounded-2xl">
+                ✏️ Edit
+              </button>
+              <button className="flex-1 bg-brand-card border border-white/10 text-white font-semibold text-sm py-3 rounded-2xl">
+                🚀 Boost
+              </button>
+            </div>
+            <div className="flex gap-3">
+              <button className="flex-1 bg-brand-card border border-white/10 text-white font-semibold text-sm py-3 rounded-2xl">
+                ✅ Mark Sold
+              </button>
+              <button className="flex-1 bg-red-950 border border-red-800 text-red-400 font-semibold text-sm py-3 rounded-2xl">
+                🗑️ Delete
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <button className="w-full bg-brand-yellow text-black font-bold text-base py-4 rounded-2xl mb-2">
+              Buy Now
+            </button>
+            <div className="flex gap-3">
+              <button className="flex-1 bg-brand-card border border-white/10 text-white font-semibold text-sm py-3 rounded-2xl">
+                💬 Message
+              </button>
+              <button className="flex-1 bg-brand-card border border-white/10 text-white font-semibold text-sm py-3 rounded-2xl">
+                🤝 Make Offer
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       <BottomNav />
