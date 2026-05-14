@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useState } from "react";
@@ -22,17 +22,31 @@ const CONDITION_STYLES: Record<string, { bg: string; text: string }> = {
   "Fair":     { bg: "bg-orange-950", text: "text-orange-400" },
 };
 
+const CATEGORY_STYLES: Record<string, { bg: string; emoji: string }> = {
+  "Tops":        { bg: "#1a2440", emoji: "👕" },
+  "Bottoms":     { bg: "#1a3020", emoji: "👖" },
+  "Shoes":       { bg: "#3a1a1a", emoji: "👟" },
+  "Bags":        { bg: "#3a2e10", emoji: "👜" },
+  "Accessories": { bg: "#2e1a3a", emoji: "💍" },
+  "Outerwear":   { bg: "#102a3a", emoji: "🧥" },
+};
+const DEFAULT_STYLE = { bg: "#1c1c12", emoji: "👗" };
+
 export default function ListingCard({ listing }: { listing: Listing }) {
   const [liked, setLiked] = useState(listing.is_liked ?? false);
   const condition = listing.condition ?? "Good";
   const condStyle = CONDITION_STYLES[condition] ?? { bg: "bg-white/10", text: "text-white/50" };
+  const catStyle = CATEGORY_STYLES[listing.category ?? ""] ?? DEFAULT_STYLE;
 
   return (
     <Link href={`/listing/${listing.id}`} className="block">
       <div className="bg-brand-card rounded-2xl overflow-hidden border border-white/5 hover:border-brand-yellow/30 transition-colors">
 
         {/* Photo */}
-        <div className="relative bg-white/5 h-36 flex items-center justify-center">
+        <div
+          className="relative h-36 flex items-center justify-center"
+          style={{ background: catStyle.bg }}
+        >
           {listing.image_url ? (
             <img
               src={listing.image_url}
@@ -40,7 +54,9 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <span className="text-4xl">👕</span>
+            <span className="text-4xl">
+              {listing.image_url ? null : catStyle.emoji}
+            </span>
           )}
 
           {/* Like button */}

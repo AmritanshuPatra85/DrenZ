@@ -1,106 +1,136 @@
-import { createClient } from "@/lib/supabase/server";
-import BottomNav from "@/components/BottomNav";
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import BottomNav from "@/components/BottomNav";
 
-export default async function LandingPage() {
-  const supabase = createClient();
+const CATEGORIES = [
+  { label: "All",         emoji: ""   },
+  { label: "Tops",        emoji: "👕" },
+  { label: "Bottoms",     emoji: "👖" },
+  { label: "Shoes",       emoji: "👟" },
+  { label: "Bags",        emoji: "👜" },
+  { label: "Accessories", emoji: "💍" },
+];
 
-  const { data: listings } = await supabase
-    .from("listings")
-    .select("*")
-    .eq("status", "active")
-    .limit(8);
+const CARD_COLORS = ["#e8e4f0", "#e0f0e8", "#f0e8e8", "#f0f0e0", "#e0e8f0", "#f0e8f0"];
+
+const CARD_EMOJIS: Record<string, string> = {
+  "Tops": "👕", "Bottoms": "👖", "Shoes": "👟",
+  "Bags": "👜", "Accessories": "💍", "Outerwear": "🧥",
+};
+
+const FALLBACK = [
+  { id: "1", title: "H&M Oversized Hoodie", price: 349, size: "M",   condition: "Good",     category: "Tops",        seller_alias: "shadow_panda", seller_dept: "CSE" },
+  { id: "2", title: "Levi's 511 Jeans",     price: 599, size: "30",  condition: "Like New", category: "Bottoms",     seller_alias: "cool_tiger",   seller_dept: "ECE" },
+  { id: "3", title: "Nike Tanjun Sneakers", price: 799, size: "9",   condition: "Good",     category: "Shoes",       seller_alias: "lazy_fox",     seller_dept: "MBA" },
+  { id: "4", title: "Zara Crop Jacket",     price: 450, size: "S",   condition: "Fair",     category: "Outerwear",   seller_alias: "quick_owl",    seller_dept: "BCA" },
+  { id: "5", title: "Formal Shirt White",   price: 199, size: "L",   condition: "Like New", category: "Tops",        seller_alias: "wise_bear",    seller_dept: "CSE" },
+  { id: "6", title: "Palazzo Pants Black",  price: 275, size: "XS",  condition: "Good",     category: "Bottoms",     seller_alias: "bold_lynx",    seller_dept: "BBA" },
+  { id: "7", title: "Canvas Tote Bag",      price: 149, size: "Free",condition: "Like New", category: "Bags",        seller_alias: "pink_wolf",    seller_dept: "BBA" },
+  { id: "8", title: "Silver Hoop Earrings", price: 99,  size: "Free",condition: "Good",     category: "Accessories", seller_alias: "star_fox",     seller_dept: "CSE" },
+];
+
+const TICKER = ["ZERO SCAMS", "QUALITY VERIFIED", "KIIT", "STUDENT ID VERIFIED", "CAMPUS PICKUP", "ZERO SCAMS", "QUALITY VERIFIED", "KIIT"];
+
+export default function LandingPage() {
+  const [category, setCategory] = useState("All");
+
+  const filtered = category === "All" ? FALLBACK : FALLBACK.filter(l => l.category === category);
 
   return (
-    <main className="min-h-screen bg-brand-dark text-white">
-      {/* Navbar */}
-      <nav className="flex items-center justify-between px-6 py-4">
-        <span className="text-brand-yellow font-bold text-2xl tracking-widest uppercase">
-          DRENZ
-        </span>
-        <Link
-          href="/login"
-          className="bg-white text-black text-sm font-medium px-4 py-2 rounded-full"
-        >
+    <main className="min-h-screen bg-brand-dark text-white pb-24">
+
+      {/* Nav */}
+      <div className="flex items-center justify-between px-5 pt-5 pb-2">
+        <span className="text-brand-yellow font-black text-2xl tracking-widest uppercase">DRENZ</span>
+        <Link href="/login" className="bg-white text-black text-sm font-semibold px-5 py-2 rounded-full">
           Join Campus
         </Link>
-      </nav>
-
-      {/* Hero */}
-      <section className="px-6 py-10">
-        <div className="bg-brand-card rounded-3xl p-8 min-h-[400px] relative overflow-hidden">
-          <span className="border border-white/30 text-white text-xs px-3 py-1 rounded-full mb-6 inline-block">
-            KIIT
-          </span>
-          <h1 className="text-5xl font-black uppercase leading-tight">
-            WEAR IT.<br />
-            <span className="text-brand-yellow">PASS IT.</span><br />
-            LIST IT.
-          </h1>
-          <p className="text-white/60 text-sm mt-4 max-w-xs">
-            Keep the campus cycle moving with curated fashion that gets worn,
-            passed on, and listed again with trust.
-          </p>
-
-
-
-          {/* CTA */}
-          <Link
-            href="/login"
-            className="mt-8 inline-block bg-brand-yellow text-black font-semibold px-8 py-4 rounded-2xl w-full text-center"
-          >
-            Join your campus →
-          </Link>
-        </div>
-      </section>
-
-      {/* Ticker */}
-      <div className="bg-brand-ticker text-black text-xs font-bold py-2 px-4 flex gap-6 overflow-hidden whitespace-nowrap">
-        {["ZERO SCAMS", "QUALITY VERIFIED", "KIIT", "STUDENT ID VERIFIED", "CAMPUS PICKUP"].map((item) => (
-          <span key={item}>+ {item}</span>
-        ))}
       </div>
 
-      {/* Category Pills */}
-      <section className="px-6 mt-6">
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {["All", "Tops", "Bottoms", "Shoes", "Bags", "Accessories"].map((cat) => (
+      {/* Hero */}
+      <div className="mx-4 mt-3 rounded-3xl p-7 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #1c1c12 0%, #2a2410 50%, #1c1c12 100%)" }}>
+        {/* Glow */}
+        <div className="absolute top-0 right-0 w-48 h-48 rounded-full opacity-20" style={{ background: "radial-gradient(circle, #F5A623, transparent)", transform: "translate(30%, -30%)" }} />
+
+        <span className="border border-white/30 text-white text-xs px-3 py-1 rounded-full mb-5 inline-block">KIIT</span>
+
+        <h1 className="text-4xl font-black uppercase leading-tight mb-3">
+          WEAR IT.<br />
+          <span className="text-brand-yellow">PASS IT.</span><br />
+          LIST IT.
+        </h1>
+
+        <p className="text-white/50 text-sm mb-6 max-w-xs leading-relaxed">
+          Keep the campus cycle moving with curated fashion that gets worn, passed on, and listed again with trust.
+        </p>
+
+        <Link href="/login" className="block bg-brand-yellow text-black font-bold text-center py-4 rounded-2xl text-sm">
+          Join your campus →
+        </Link>
+      </div>
+
+      {/* Ticker */}
+      <div className="overflow-hidden mt-4 bg-brand-ticker py-2">
+        <div className="flex gap-8 animate-marquee whitespace-nowrap">
+          {[...TICKER, ...TICKER].map((item, i) => (
+            <span key={i} className="text-black text-xs font-black tracking-widest shrink-0">+ {item}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Category pills */}
+      <div className="bg-white px-4 pt-3 pb-2 mt-0">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+          {CATEGORIES.map(cat => (
             <button
-              key={cat}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
-                cat === "All"
+              key={cat.label}
+              onClick={() => setCategory(cat.label)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap flex items-center gap-1 transition-colors ${
+                category === cat.label
                   ? "bg-black text-white"
-                  : "bg-white/10 text-white"
+                  : "bg-black/5 text-black/60"
               }`}
             >
-              {cat}
+              {cat.emoji && <span>{cat.emoji}</span>}
+              {cat.label}
             </button>
           ))}
         </div>
-      </section>
+      </div>
 
-      {/* Listings Grid */}
-      <section className="px-6 mt-6 grid grid-cols-2 gap-4 pb-24">
-        {(listings && listings.length > 0 ? listings : [
-          { id: 1, title: "H&M Hoodie", price: 349, status: "active" },
-          { id: 2, title: "Levi's Jeans", price: 599, status: "active" },
-          { id: 3, title: "Nike Sneakers", price: 799, status: "active" },
-          { id: 4, title: "Zara Jacket", price: 450, status: "active" },
-        ]).map((listing) => (
-          <div key={listing.id} className="bg-white/5 rounded-2xl overflow-hidden">
-            <div className="bg-white/10 h-40 flex items-center justify-center">
-              <span className="text-4xl">👕</span>
-            </div>
-            <div className="p-3">
-              <span className="text-green-400 text-xs font-bold">VERIFIED</span>
-              <p className="text-white text-sm font-medium mt-1">{listing.title}</p>
-              <p className="text-brand-yellow font-bold mt-1">₹{listing.price}</p>
-            </div>
-          </div>
-        ))}
-      </section>
+      {/* Cards grid */}
+      <div className="bg-white px-4 pt-4 pb-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {filtered.map((listing, i) => {
+            const bg    = CARD_COLORS[i % CARD_COLORS.length];
+            const emoji = CARD_EMOJIS[listing.category ?? ""] ?? "👗";
+            return (
+              <Link key={listing.id} href="/login">
+                <div className="rounded-2xl overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform">
+                  <div className="h-40 flex items-center justify-center relative" style={{ background: bg }}>
+                    <span className="text-5xl">{emoji}</span>
+                    <span className="absolute top-2 left-2 bg-black/60 text-white text-[9px] font-black px-2 py-0.5 rounded-full tracking-widest">
+                      VERIFIED
+                    </span>
+                    <button onClick={e => e.preventDefault()} className="absolute top-2 right-2 bg-white/80 rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                      🤍
+                    </button>
+                  </div>
+                  <div className="bg-brand-card p-3">
+                    <p className="text-white text-xs font-semibold truncate">{listing.title}</p>
+                    <p className="text-brand-yellow font-black text-sm mt-0.5">₹{listing.price}</p>
+                    <p className="text-white/40 text-[10px] mt-0.5 truncate">{listing.seller_alias} · {listing.seller_dept}</p>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
 
-      <BottomNav unreadCount={3} />
+      <BottomNav />
     </main>
   );
 }

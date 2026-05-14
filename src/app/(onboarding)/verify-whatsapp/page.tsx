@@ -169,7 +169,7 @@ export default function VerifyWhatsappPage() {
             variant="ghost"
             className="h-auto px-0 py-0 text-brand-yellow hover:bg-transparent hover:text-brand-yellow/80"
           >
-            <Link href="/">Skip</Link>
+           <Link href="/home">Skip</Link>
           </Button>
         </div>
 
@@ -264,7 +264,7 @@ export default function VerifyWhatsappPage() {
             <p className="text-sm font-semibold text-brand-yellow">Verification complete</p>
             <p className="mt-1 text-sm text-white/80">Your WhatsApp number is now linked to your account.</p>
             <Button asChild className="mt-4 h-10 w-full bg-brand-yellow font-semibold text-brand-dark hover:bg-brand-yellow/90">
-              <Link href="/">Continue</Link>
+              <Link href="/onboarding">Continue</Link>
             </Button>
           </div>
         )}

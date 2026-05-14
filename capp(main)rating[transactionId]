@@ -1,0 +1,15 @@
+[33m885f0b3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdev[m[33m, [m[1;31morigin/dev[m[33m)[m fix: suspense wrapper for confirm-otp useSearchParams
+[33mcd9121a[m fix: use createClient instead of createServerClient in Sprint 3 routes
+[33m466e38b[m fix: auth callback cookies, onboarding redirects, listing detail page, DB trigger, home feed query
+[33m35cc06d[m feat: Sprint 3 backend — offers, realtime, checkout, razorpay webhook
+[33mfa9d931[m feat: Sprint 3 chat, inbox, offers, checkout screens (S3-01, S3-02, S3-03, S3-06)
+[33mdcad6e5[m S2-11: photo gallery component with swipe, zoom, dots | S2-04: owner view with edit/boost/delete/mark sold
+[33m349ae6f[m landing page: animated ticker, white bg category pills, pastel cards, no stats
+[33m0ca2244[m feat: S2-06, S2-07, S2-08, S2-09 — listings CRUD + like toggle APIs
+[33m9eaa2c1[m S2-05: create listing page with form, category, condition, size, publish flow
+[33m062c718[m S2-04: listing detail page with photo, badges, seller card, action buttons
+[33m692d425[m S2-03: search page with debounced query, category, condition, price filter
+[33mfd95505[m S2-01: home feed with category filter, listing grid, pagination
+[33m9039f37[m S2-02: reusable ListingCard component with like, size badge, condition
+[33mf1729f1[m feat: Sprint 1 onboarding screens (S1-04, S1-06, S1-07, S1-09)
+[33m7116562[m S1-01: add fallback listings for empty Supabase state

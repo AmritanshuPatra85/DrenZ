@@ -1,11 +1,12 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient as supabaseCreateServerClient } from "@supabase/ssr"; // Added 'as' alias
 import { cookies } from "next/headers";
 import { Database } from "@/types/database.types";
 
-export function createClient() {
+// Rename this to match what your other files are looking for
+export function createServerClient() { 
   const cookieStore = cookies();
 
-  return createServerClient<Database>(
+  return supabaseCreateServerClient<Database>( // Use the alias here
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
