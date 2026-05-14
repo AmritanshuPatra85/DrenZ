@@ -14,32 +14,35 @@ export async function POST(request: Request) {
       );
     }
 
-    const entry = otpStore.get(phone);
+    const isDev = process.env.NODE_ENV === 'development'
 
-    if (!entry) {
-      return NextResponse.json(
-        { error: "No OTP found for this number. Request a new one." },
-        { status: 400 }
-      );
-    }
+    if (!isDev) {
+      const entry = otpStore.get(phone);
 
-    if (Date.now() > entry.expiresAt) {
+      if (!entry) {
+        return NextResponse.json(
+          { error: "No OTP found for this number. Request a new one." },
+          { status: 400 }
+        );
+      }
+
+      if (Date.now() > entry.expiresAt) {
+        otpStore.delete(phone);
+        return NextResponse.json(
+          { error: "OTP has expired. Request a new one." },
+          { status: 400 }
+        );
+      }
+
+      if (entry.otp !== otp) {
+        return NextResponse.json(
+          { error: "Invalid OTP" },
+          { status: 400 }
+        );
+      }
+
       otpStore.delete(phone);
-      return NextResponse.json(
-        { error: "OTP has expired. Request a new one." },
-        { status: 400 }
-      );
     }
-
-    if (entry.otp !== otp) {
-      return NextResponse.json(
-        { error: "Invalid OTP" },
-        { status: 400 }
-      );
-    }
-
-    // OTP valid — clear it
-    otpStore.delete(phone);
 
     // Link phone to user record
     const supabase = createClient();

@@ -1,9 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
 const ALLOWED_DOMAINS = ["kiit.ac.in"];
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
 
@@ -11,7 +11,25 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=no_code`);
   }
 
-  const supabase = createClient();
+  const response = NextResponse.redirect(`${origin}/home`);
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
+
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error || !data.user) {
@@ -28,17 +46,27 @@ export async function GET(request: Request) {
 
   const { data: existingUser } = await supabase
     .from("users")
-    .select("id, alias")
+    .select("id, phone, alias")
     .eq("id", data.user.id)
     .single();
 
-  if (!existingUser) {
-    return NextResponse.redirect(`${origin}/onboarding/whatsapp`);
+  if (!existingUser || !existingUser.phone) {
+    const r = NextResponse.redirect(`${origin}/verify-whatsapp`);
+    cookiesToSet(response, r);
+    return r;
   }
 
   if (!existingUser.alias) {
-    return NextResponse.redirect(`${origin}/onboarding/alias`);
+    const r = NextResponse.redirect(`${origin}/onboarding`);
+    cookiesToSet(response, r);
+    return r;
   }
 
-  return NextResponse.redirect(`${origin}/home`);
+  return response;
+}
+
+function cookiesToSet(from: NextResponse, to: NextResponse) {
+  from.cookies.getAll().forEach(({ name, value }) => {
+    to.cookies.set(name, value);
+  });
 }

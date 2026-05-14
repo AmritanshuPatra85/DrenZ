@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +9,6 @@ import { generateAliases } from "@/lib/alias-generator";
 const MAX_REGENERATE_USES = 5;
 
 export default function AliasPickerPage() {
-  const router = useRouter();
   const [aliases, setAliases] = useState<string[]>(() => generateAliases());
   const [selectedAlias, setSelectedAlias] = useState<string | null>(null);
   const [regenerateUses, setRegenerateUses] = useState(0);
@@ -24,7 +22,10 @@ export default function AliasPickerPage() {
   );
 
   const handleRegenerate = () => {
-    if (regenerateUses >= MAX_REGENERATE_USES) return;
+    if (regenerateUses >= MAX_REGENERATE_USES) {
+      return;
+    }
+
     setAliases(generateAliases());
     setSelectedAlias(null);
     setRegenerateUses((previous) => previous + 1);
@@ -33,7 +34,9 @@ export default function AliasPickerPage() {
   };
 
   const handleConfirm = async () => {
-    if (!selectedAlias) return;
+    if (!selectedAlias) {
+      return;
+    }
 
     setIsSaving(true);
     setErrorMessage(null);
@@ -42,7 +45,9 @@ export default function AliasPickerPage() {
     try {
       const response = await fetch("/api/users/me", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ alias: selectedAlias }),
       });
 
@@ -55,7 +60,6 @@ export default function AliasPickerPage() {
       }
 
       setSuccessMessage(`Alias locked in: ${selectedAlias}`);
-      setTimeout(() => router.push("/home"), 1000);
     } catch {
       setErrorMessage("Network issue detected. Please check your connection and try again.");
     } finally {
@@ -87,6 +91,7 @@ export default function AliasPickerPage() {
           <CardContent className="space-y-3">
             {aliases.map((alias) => {
               const selected = alias === selectedAlias;
+
               return (
                 <button
                   key={alias}

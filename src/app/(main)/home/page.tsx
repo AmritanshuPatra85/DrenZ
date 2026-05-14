@@ -30,32 +30,37 @@ export default function HomeFeed() {
 
   const PAGE_SIZE = 20;
 
-  const fetchListings = async (cat: string, pageNum: number, replace: boolean) => {
-    setLoading(true);
-    let query = supabase
-      .from("listings")
-      .select("id, title, price, size, condition, category, image_url, seller:users(alias, dept)")
-      .eq("status", "active")
-      .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
+ const fetchListings = async (cat: string, pageNum: number, replace: boolean) => {
+  setLoading(true);
 
-    if (cat !== "All") query = query.eq("category", cat);
+  const { data: { user } } = await supabase.auth.getUser();
 
-    const { data } = await query;
+  let query = supabase
+    .from("listings")
+    .select("id, title, price, condition, category, images, seller:users(alias, college)")
+    .eq("status", "active")
+    .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
-    if (!data || data.length === 0) {
-      if (pageNum === 0) setListings(FALLBACK);
-      setHasMore(false);
-    } else {
-      const shaped = data.map((l: any) => ({
-        ...l,
-        seller_alias: l.seller?.alias,
-        seller_dept:  l.seller?.dept,
-      }));
-      setListings(prev => replace ? shaped : [...prev, ...shaped]);
-      setHasMore(data.length === PAGE_SIZE);
-    }
-    setLoading(false);
-  };
+  if (user) query = query.neq("seller_id", user.id);
+  if (cat !== "All") query = query.eq("category", cat.toLowerCase());
+
+  const { data, error } = await query;
+
+  if (!data || data.length === 0) {
+    if (pageNum === 0) setListings(FALLBACK);
+    setHasMore(false);
+  } else {
+    const shaped = data.map((l: any) => ({
+      ...l,
+      image_url: l.images?.[0] ?? null,
+      seller_alias: l.seller?.alias,
+      seller_dept: l.seller?.college,
+    }));
+    setListings(prev => replace ? shaped : [...prev, ...shaped]);
+    setHasMore(data.length === PAGE_SIZE);
+  }
+  setLoading(false);
+};
 
   useEffect(() => {
     setPage(0);
