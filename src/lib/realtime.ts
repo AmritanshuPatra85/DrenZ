@@ -48,3 +48,37 @@ export async function sendTypingIndicator(
 ) {
   await channel.track({ user_id: userId, typing })
 }
+
+export type TransactionEvent =
+  | { type: "code_validated" }
+  | { type: "mutual_cancel"; initiator_id: string }
+  | { type: "dispute_filed"; by: string }
+  | { type: "cancel_confirmed" };
+
+export function subscribeToTransaction(
+  transactionId: string,
+  onEvent: (event: TransactionEvent) => void
+) {
+  const supabase = createBrowserClient();
+
+  const channel = supabase
+    .channel(`transaction:${transactionId}`)
+    .on("broadcast", { event: "transaction_update" }, ({ payload }) => {
+      onEvent(payload as TransactionEvent);
+    })
+    .subscribe();
+
+  return () => supabase.removeChannel(channel);
+}
+
+export async function broadcastTransactionEvent(
+  transactionId: string,
+  event: TransactionEvent
+) {
+  const supabase = createBrowserClient();
+  await supabase.channel(`transaction:${transactionId}`).send({
+    type: "broadcast",
+    event: "transaction_update",
+    payload: event,
+  });
+}

@@ -1,62 +1,92 @@
-import { NextResponse } from "next/server"
-
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createClient()
+  const supabase = createClient();
+  const { action } = await request.json();
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!["initiate", "confirm"].includes(action)) {
+    return NextResponse.json({ error: "invalid_action" }, { status: 400 });
   }
 
-  const { data: transaction, error: transactionError } = await supabase
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  // Get transaction
+  const { data: transaction, error } = await supabase
     .from("transactions")
-    .select("id, buyer_id, seller_id, status")
+    .select("id, status, buyer_id, seller_id, listing_id, cancel_initiated_by")
     .eq("id", params.id)
-    .maybeSingle()
+    .single();
 
-  if (transactionError || !transaction) {
-    return NextResponse.json({ error: "Transaction not found" }, { status: 404 })
+  if (error || !transaction) {
+    return NextResponse.json({ error: "transaction_not_found" }, { status: 404 });
   }
 
-  const isParticipant =
-    transaction.buyer_id === user.id || transaction.seller_id === user.id
-  if (!isParticipant) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const isParty =
+    user.id === transaction.buyer_id || user.id === transaction.seller_id;
+
+  if (!isParty) {
+    return NextResponse.json({ error: "not_authorized" }, { status: 403 });
   }
 
   if (transaction.status === "completed") {
-    return NextResponse.json(
-      { error: "Completed transactions cannot be cancelled" },
-      { status: 409 }
-    )
+    return NextResponse.json({ error: "already_completed" }, { status: 400 });
   }
 
-  const { data: updated, error: updateError } = await supabase
-    .from("transactions")
-    .update({ status: "refunded" })
-    .eq("id", params.id)
-    .select("id, status")
-    .single()
+  if (action === "initiate") {
+    // First party requests cancel
+    await supabase
+      .from("transactions")
+      .update({
+        status: "cancel_requested",
+        cancel_initiated_by: user.id,
+      })
+      .eq("id", params.id);
 
-  if (updateError || !updated) {
-    return NextResponse.json(
-      { error: "Failed to cancel transaction" },
-      { status: 500 }
-    )
+    // Broadcast to other party
+    await supabase.channel(`transaction:${params.id}`).send({
+      type: "broadcast",
+      event: "transaction_update",
+      payload: { type: "mutual_cancel", initiator_id: user.id },
+    });
+
+    return NextResponse.json({ success: true, status: "cancel_requested" });
   }
 
-  return NextResponse.json({
-    success: true,
-    transaction: updated,
-    message: "Order cancelled successfully.",
-  })
+  if (action === "confirm") {
+    // Second party confirms — must not be the initiator
+    if (transaction.cancel_initiated_by === user.id) {
+      return NextResponse.json(
+        { error: "cannot_confirm_own_cancel" },
+        { status: 400 }
+      );
+    }
+
+    // Cancel transaction + reset listing
+    await supabase
+      .from("transactions")
+      .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+      .eq("id", params.id);
+
+    await supabase
+      .from("listings")
+      .update({ status: "active" })
+      .eq("id", transaction.listing_id);
+
+    // Broadcast confirmed
+    await supabase.channel(`transaction:${params.id}`).send({
+      type: "broadcast",
+      event: "transaction_update",
+      payload: { type: "cancel_confirmed" },
+    });
+
+    return NextResponse.json({ success: true, status: "cancelled" });
+  }
 }

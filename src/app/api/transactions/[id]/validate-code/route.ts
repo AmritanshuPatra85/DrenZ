@@ -1,103 +1,79 @@
-import { NextResponse } from "next/server"
-import { z } from "zod"
-
-import { createClient } from "@/lib/supabase/server"
-
-const validateCodeSchema = z.object({
-  code: z
-    .string()
-    .trim()
-    .regex(/^\d{4}$/, "Code must be exactly 4 digits"),
-})
+import { createClient } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createClient()
+  const supabase = createClient();
+  const { code } = await request.json();
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!code) {
+    return NextResponse.json({ error: "code_required" }, { status: 400 });
   }
 
-  let body: unknown
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
-  }
-
-  const parsed = validateCodeSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", issues: parsed.error.flatten() },
-      { status: 400 }
-    )
-  }
-
-  const { data: transaction, error: transactionError } = await supabase
+  // Get transaction
+  const { data: transaction, error } = await supabase
     .from("transactions")
-    .select("id, buyer_id, seller_id, handoff_code, status")
+    .select("id, status, handoff_code_hash, code_attempts, buyer_id, seller_id, listing_id")
     .eq("id", params.id)
-    .maybeSingle()
+    .single();
 
-  if (transactionError || !transaction) {
-    return NextResponse.json({ error: "Transaction not found" }, { status: 404 })
-  }
-
-  if (user.id !== transaction.seller_id) {
-    return NextResponse.json(
-      { error: "Only the seller can validate handoff code" },
-      { status: 403 }
-    )
+  if (error || !transaction) {
+    return NextResponse.json({ error: "transaction_not_found" }, { status: 404 });
   }
 
   if (transaction.status === "completed") {
-    return NextResponse.json({
-      valid: true,
-      alreadyValidated: true,
-    })
+    return NextResponse.json({ error: "already_completed" }, { status: 400 });
   }
 
-  if (!transaction.handoff_code) {
-    return NextResponse.json(
-      { error: "No handoff code found for this transaction" },
-      { status: 409 }
-    )
+  if (transaction.code_attempts >= 5) {
+    return NextResponse.json({ error: "locked_out" }, { status: 403 });
   }
 
-  if (parsed.data.code !== transaction.handoff_code) {
+  // Compare code
+  const valid = await bcrypt.compare(code, transaction.handoff_code_hash);
+
+  if (!valid) {
+    // Increment attempts
+    await supabase
+      .from("transactions")
+      .update({ code_attempts: transaction.code_attempts + 1 })
+      .eq("id", params.id);
+
+    const attempts_remaining = 4 - transaction.code_attempts;
+
+    if (attempts_remaining <= 0) {
+      return NextResponse.json({ error: "locked_out" }, { status: 403 });
+    }
+
     return NextResponse.json(
-      { valid: false, error: "Incorrect handoff code" },
+      { error: "invalid_code", attempts_remaining },
       { status: 400 }
-    )
+    );
   }
 
-  const nowIso = new Date().toISOString()
-  const { data: updated, error: updateError } = await supabase
+  // Code correct — complete transaction
+  const { data: completed } = await supabase
     .from("transactions")
-    .update({
-      status: "completed",
-      handoff_confirmed_at: nowIso,
-    })
+    .update({ status: "completed", completed_at: new Date().toISOString() })
     .eq("id", params.id)
-    .select("id, status, handoff_confirmed_at")
-    .single()
+    .select()
+    .single();
 
-  if (updateError || !updated) {
-    return NextResponse.json(
-      { error: "Failed to confirm handoff" },
-      { status: 500 }
-    )
-  }
+  // Mark listing as sold
+  await supabase
+    .from("listings")
+    .update({ status: "sold" })
+    .eq("id", transaction.listing_id);
 
-  return NextResponse.json({
-    valid: true,
-    transaction: updated,
-  })
+  // Broadcast via Realtime
+  await supabase.channel(`transaction:${params.id}`).send({
+    type: "broadcast",
+    event: "transaction_update",
+    payload: { type: "code_validated" },
+  });
+
+  return NextResponse.json({ success: true, transaction: completed });
 }
