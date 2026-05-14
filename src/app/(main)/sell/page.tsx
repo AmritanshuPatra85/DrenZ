@@ -6,17 +6,29 @@ import { createBrowserClient } from "@supabase/ssr";
 import BottomNav from "@/components/BottomNav";
 import { uploadListingImage } from "@/lib/image-utils";
 
-const CATEGORIES = ["Tops", "Bottoms", "Shoes", "Bags", "Accessories"];
-const CONDITIONS = ["Like New", "Good", "Fair"];
-const SIZES      = ["XS", "S", "M", "L", "XL", "XXL", "Free Size"];
+const CATEGORIES = [
+  { value: "tops",        label: "Tops"        },
+  { value: "bottoms",     label: "Bottoms"     },
+  { value: "shoes",       label: "Shoes"       },
+  { value: "bags",        label: "Bags"        },
+  { value: "accessories", label: "Accessories" },
+];
+
+const CONDITIONS = [
+  { value: "like_new", label: "Like New" },
+  { value: "good",     label: "Good"     },
+  { value: "fair",     label: "Fair"     },
+];
+
+const SIZES = ["XS", "S", "M", "L", "XL", "XXL", "Free Size"];
 
 export default function CreateListing() {
   const router = useRouter();
-  const [submitting,  setSubmitting]  = useState(false);
-  const [submitted,   setSubmitted]   = useState(false);
-  const [uploading,   setUploading]   = useState(false);
-  const [images,      setImages]      = useState<File[]>([]);
-  const [previews,    setPreviews]    = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted,  setSubmitted]  = useState(false);
+  const [uploading,  setUploading]  = useState(false);
+  const [images,     setImages]     = useState<File[]>([]);
+  const [previews,   setPreviews]   = useState<string[]>([]);
   const [form, setForm] = useState({
     title: "", category: "", condition: "", size: "", brand: "", price: "", description: "",
   });
@@ -37,7 +49,6 @@ export default function CreateListing() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSubmitting(false); return; }
 
-    // Upload images
     setUploading(true);
     const imageUrls: string[] = [];
     for (const file of images) {
@@ -58,10 +69,15 @@ export default function CreateListing() {
       status:      "active",
       image_url:   imageUrls[0] ?? null,
       image_urls:  imageUrls,
+      college:     "KIIT",
     });
 
     setSubmitting(false);
-    if (!error) setSubmitted(true);
+    if (error) {
+      alert(error.message);
+    } else {
+      setSubmitted(true);
+    }
   };
 
   if (submitted) return (
@@ -153,10 +169,10 @@ export default function CreateListing() {
           <label className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-2 block">Category *</label>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map(c => (
-              <button key={c} onClick={() => set("category", c)}
+              <button key={c.value} onClick={() => set("category", c.value)}
                 className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
-                  form.category === c ? "bg-brand-yellow text-black" : "bg-brand-card border border-white/10 text-white/60"
-                }`}>{c}</button>
+                  form.category === c.value ? "bg-brand-yellow text-black" : "bg-brand-card border border-white/10 text-white/60"
+                }`}>{c.label}</button>
             ))}
           </div>
         </div>
@@ -166,10 +182,10 @@ export default function CreateListing() {
           <label className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-2 block">Condition *</label>
           <div className="flex gap-2">
             {CONDITIONS.map(c => (
-              <button key={c} onClick={() => set("condition", c)}
+              <button key={c.value} onClick={() => set("condition", c.value)}
                 className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
-                  form.condition === c ? "bg-brand-yellow text-black" : "bg-brand-card border border-white/10 text-white/60"
-                }`}>{c}</button>
+                  form.condition === c.value ? "bg-brand-yellow text-black" : "bg-brand-card border border-white/10 text-white/60"
+                }`}>{c.label}</button>
             ))}
           </div>
         </div>
@@ -180,7 +196,7 @@ export default function CreateListing() {
           <div className="flex flex-wrap gap-2">
             {SIZES.map(s => (
               <button key={s} onClick={() => set("size", s)}
-                className={`px-4 py-2 rounded-full text-xs font-semibond transition-colors ${
+                className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
                   form.size === s ? "bg-brand-yellow text-black" : "bg-brand-card border border-white/10 text-white/60"
                 }`}>{s}</button>
             ))}
