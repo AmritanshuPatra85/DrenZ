@@ -4,15 +4,31 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import BottomNav from "@/components/BottomNav";
+import { uploadListingImage } from "@/lib/image-utils";
 
-const CATEGORIES = ["Tops", "Bottoms", "Shoes", "Bags", "Accessories"];
-const CONDITIONS = ["Like New", "Good", "Fair"];
-const SIZES      = ["XS", "S", "M", "L", "XL", "XXL", "Free Size"];
+const CATEGORIES = [
+  { value: "tops",        label: "Tops"        },
+  { value: "bottoms",     label: "Bottoms"     },
+  { value: "shoes",       label: "Shoes"       },
+  { value: "bags",        label: "Bags"        },
+  { value: "accessories", label: "Accessories" },
+];
+
+const CONDITIONS = [
+  { value: "like_new", label: "Like New" },
+  { value: "good",     label: "Good"     },
+  { value: "fair",     label: "Fair"     },
+];
+
+const SIZES = ["XS", "S", "M", "L", "XL", "XXL", "Free Size"];
 
 export default function CreateListing() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [submitted,  setSubmitted]  = useState(false);
+  const [uploading,  setUploading]  = useState(false);
+  const [images,     setImages]     = useState<File[]>([]);
+  const [previews,   setPreviews]   = useState<string[]>([]);
   const [form, setForm] = useState({
     title: "", category: "", condition: "", size: "", brand: "", price: "", description: "",
   });
@@ -31,6 +47,15 @@ export default function CreateListing() {
     setSubmitting(true);
 
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setSubmitting(false); return; }
+
+    setUploading(true);
+    const imageUrls: string[] = [];
+    for (const file of images) {
+      const url = await uploadListingImage(file, user.id);
+      if (url) imageUrls.push(url);
+    }
+    setUploading(false);
 
     const { error } = await supabase.from("listings").insert({
       title:       form.title,
@@ -40,12 +65,19 @@ export default function CreateListing() {
       brand:       form.brand || null,
       price:       Number(form.price),
       description: form.description || null,
-      seller_id:   user?.id,
+      seller_id:   user.id,
       status:      "active",
+      image_url:   imageUrls[0] ?? null,
+      image_urls:  imageUrls,
+      college:     "KIIT",
     });
 
     setSubmitting(false);
-    if (!error) setSubmitted(true);
+    if (error) {
+      alert(error.message);
+    } else {
+      setSubmitted(true);
+    }
   };
 
   if (submitted) return (
@@ -57,7 +89,12 @@ export default function CreateListing() {
         className="bg-brand-yellow text-black font-bold px-8 py-4 rounded-2xl w-full">
         Back to Home
       </button>
-      <button onClick={() => { setSubmitted(false); setForm({ title:"",category:"",condition:"",size:"",brand:"",price:"",description:"" }); }}
+      <button onClick={() => {
+        setSubmitted(false);
+        setImages([]);
+        setPreviews([]);
+        setForm({ title:"", category:"", condition:"", size:"", brand:"", price:"", description:"" });
+      }}
         className="mt-3 text-white/40 text-sm">
         List another item
       </button>
@@ -74,12 +111,44 @@ export default function CreateListing() {
         <div className="w-12" />
       </div>
 
-      {/* Photo upload placeholder */}
+      {/* Photo upload */}
       <div className="mx-4 mb-5">
-        <div className="bg-brand-card border-2 border-dashed border-white/20 rounded-2xl h-40 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-brand-yellow/50 transition-colors">
-          <span className="text-3xl">📷</span>
-          <p className="text-white/40 text-sm">Tap to add photos</p>
-          <p className="text-white/20 text-xs">Up to 4 photos</p>
+        <div className="bg-brand-card border-2 border-dashed border-white/20 rounded-2xl p-4">
+          {previews.length > 0 && (
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              {previews.map((src, i) => (
+                <div key={i} className="relative aspect-square">
+                  <img src={src} className="w-full h-full object-cover rounded-xl" />
+                  <button
+                    onClick={() => {
+                      setImages(prev => prev.filter((_, j) => j !== i));
+                      setPreviews(prev => prev.filter((_, j) => j !== i));
+                    }}
+                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
+                  >✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {previews.length < 4 && (
+            <label className="flex flex-col items-center justify-center gap-2 cursor-pointer py-4">
+              <span className="text-3xl">📷</span>
+              <p className="text-white/40 text-sm">Tap to add photos</p>
+              <p className="text-white/20 text-xs">{previews.length}/4 photos</p>
+              <input
+                type="file" accept="image/*" multiple className="hidden"
+                onChange={e => {
+                  const files = Array.from(e.target.files ?? []).slice(0, 4 - images.length);
+                  setImages(prev => [...prev, ...files]);
+                  files.forEach(f => {
+                    const reader = new FileReader();
+                    reader.onload = ev => setPreviews(prev => [...prev, ev.target?.result as string]);
+                    reader.readAsDataURL(f);
+                  });
+                }}
+              />
+            </label>
+          )}
         </div>
       </div>
 
@@ -100,10 +169,10 @@ export default function CreateListing() {
           <label className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-2 block">Category *</label>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map(c => (
-              <button key={c} onClick={() => set("category", c)}
+              <button key={c.value} onClick={() => set("category", c.value)}
                 className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
-                  form.category === c ? "bg-brand-yellow text-black" : "bg-brand-card border border-white/10 text-white/60"
-                }`}>{c}</button>
+                  form.category === c.value ? "bg-brand-yellow text-black" : "bg-brand-card border border-white/10 text-white/60"
+                }`}>{c.label}</button>
             ))}
           </div>
         </div>
@@ -113,10 +182,10 @@ export default function CreateListing() {
           <label className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-2 block">Condition *</label>
           <div className="flex gap-2">
             {CONDITIONS.map(c => (
-              <button key={c} onClick={() => set("condition", c)}
+              <button key={c.value} onClick={() => set("condition", c.value)}
                 className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
-                  form.condition === c ? "bg-brand-yellow text-black" : "bg-brand-card border border-white/10 text-white/60"
-                }`}>{c}</button>
+                  form.condition === c.value ? "bg-brand-yellow text-black" : "bg-brand-card border border-white/10 text-white/60"
+                }`}>{c.label}</button>
             ))}
           </div>
         </div>
@@ -170,12 +239,12 @@ export default function CreateListing() {
       <div className="fixed bottom-16 left-0 right-0 px-4 pb-2 pt-3 bg-brand-dark border-t border-white/5">
         <button
           onClick={handleSubmit}
-          disabled={!isValid || submitting}
+          disabled={!isValid || submitting || uploading}
           className={`w-full font-bold text-base py-4 rounded-2xl transition-opacity ${
             isValid ? "bg-brand-yellow text-black" : "bg-white/10 text-white/30"
           } disabled:opacity-50`}
         >
-          {submitting ? "Publishing…" : "Publish Listing →"}
+          {uploading ? "Uploading photos…" : submitting ? "Publishing…" : "Publish Listing →"}
         </button>
       </div>
 
