@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 import { wati } from '@/lib/wati'
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const buyerId = notes?.buyer_id
   const sellerId = notes?.seller_id
 
-  const supabase = createServerClient()
+  const supabase = createClient()
 
   // Step 3 — Idempotency check
   const { data: existingTxn } = await supabase
