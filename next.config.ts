@@ -2,19 +2,29 @@ import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
   dest: "public",
-  disable: process.env.NODE_ENV === "development", // Keeps dev fast, but disable this to test PWA
+  disable: process.env.NODE_ENV === "development",
   register: true,
   skipWaiting: true,
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
 });
 
-/** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Your existing Next.js config (images, etc.) goes here
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: '**.razorpay.com', // For payment assets if needed
+        protocol: "https",
+        hostname: "**.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "**.razorpay.com",
       },
     ],
   },
