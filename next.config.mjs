@@ -9,10 +9,6 @@ const withPWA = withPWAInit({
   aggressiveFrontEndNavCaching: true,
 });
 
-<<<<<<< HEAD
-/** @type {import('next').NextConfig} */
-=======
->>>>>>> dev
 const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
@@ -20,11 +16,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-<<<<<<< HEAD
-};
-
-export default pwaConfig(nextConfig);
-=======
   images: {
     remotePatterns: [
       {
@@ -40,4 +31,3 @@ export default pwaConfig(nextConfig);
 };
 
 export default withPWA(nextConfig);
->>>>>>> dev

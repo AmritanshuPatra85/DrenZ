@@ -6,11 +6,11 @@
     },
     {
       "path": "/api/cron/auto-refund",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/whatsapp-batch",
-      "schedule": "0 * * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
