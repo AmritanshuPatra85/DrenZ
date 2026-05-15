@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import CountdownTimer from "@/components/CountdownTimer"
+import HandoffCode from "@/components/handoff/HandoffCode"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
 
 type MeetupPageProps = {
@@ -31,9 +31,19 @@ type TransactionApiResponse = {
 }
 
 type ValidateCodeResponse = {
-  valid?: boolean
-  alreadyValidated?: boolean
-  error?: string
+  success?: boolean
+  transaction?: {
+    id: string
+    status: "completed" | string
+  }
+  error?: "invalid_code" | "locked_out" | string
+  attempts_remaining?: number
+}
+
+type MutualCancelResponse = {
+  success?: boolean
+  status?: "cancel_requested" | "cancelled" | string
+  error?: "not_authorized" | string
 }
 
 type ActionApiResponse = {
@@ -42,32 +52,30 @@ type ActionApiResponse = {
   error?: string
 }
 
-const MAX_ATTEMPTS = 5
-
 export default function MeetupPage({ params }: MeetupPageProps) {
   const { transactionId } = params
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
-  const inputRefs = useRef<Array<HTMLInputElement | null>>([])
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isConfirmingCancelRef = useRef(false)
 
   const [transaction, setTransaction] = useState<TransactionDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [errorText, setErrorText] = useState<string | null>(null)
   const [actionText, setActionText] = useState<string | null>(null)
-  const [copyToast, setCopyToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  const [codeDigits, setCodeDigits] = useState(["", "", "", ""])
   const [isValidating, setIsValidating] = useState(false)
-  const [failedAttempts, setFailedAttempts] = useState(0)
-  const [validationState, setValidationState] = useState<"success" | "error" | null>(null)
+  const [sellerIsCorrect, setSellerIsCorrect] = useState(false)
+  const [sellerIsError, setSellerIsError] = useState(false)
+  const [sellerIsLocked, setSellerIsLocked] = useState(false)
+  const [attemptsRemaining, setAttemptsRemaining] = useState<number | undefined>(undefined)
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false)
   const [isSubmittingIssue, setIsSubmittingIssue] = useState(false)
 
   const isSeller = transaction?.viewerRole === "seller"
   const isBuyer = transaction?.viewerRole === "buyer"
-  const isLockedOut = failedAttempts >= MAX_ATTEMPTS
 
   const expiryAt = useMemo(() => {
     if (!transaction?.createdAt) {
@@ -80,23 +88,18 @@ export default function MeetupPage({ params }: MeetupPageProps) {
     return new Date(createdMs + 24 * 60 * 60 * 1000).toISOString()
   }, [transaction?.createdAt])
 
-  const showCopiedToast = () => {
-    setCopyToast(true)
+  const showToast = (message: string) => {
+    setToastMessage(message)
     if (toastTimerRef.current) {
       clearTimeout(toastTimerRef.current)
     }
-    toastTimerRef.current = setTimeout(() => setCopyToast(false), 1400)
+    toastTimerRef.current = setTimeout(() => setToastMessage(null), 1800)
   }
 
   const redirectForEvent = useCallback(
     (eventName: "mutual_cancel" | "code_validated" | "dispute_filed") => {
       if (eventName === "code_validated") {
-        router.replace("/messages")
-        return
-      }
-
-      if (eventName === "mutual_cancel") {
-        router.replace(`/pre-meetup/${transactionId}`)
+        router.replace(`/rating/${transactionId}`)
         return
       }
 
@@ -142,12 +145,70 @@ export default function MeetupPage({ params }: MeetupPageProps) {
     return () => controller.abort()
   }, [transactionId])
 
+  const broadcastEvent = useCallback(async (
+    eventName: "mutual_cancel" | "code_validated" | "dispute_filed",
+    payload?: Record<string, unknown>
+  ) => {
+    if (!channelRef.current) {
+      return
+    }
+
+    await channelRef.current.send({
+      type: "broadcast",
+      event: eventName,
+      payload: {
+        transactionId,
+        ...payload,
+      },
+    })
+  }, [transactionId])
+
+  const postMutualCancel = useCallback(
+    async (action: "initiate" | "confirm") => {
+      const response = await fetch(`/api/transactions/${transactionId}/mutual-cancel`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action }),
+      })
+      const result = (await response.json().catch(() => ({}))) as MutualCancelResponse
+      return { response, result }
+    },
+    [transactionId]
+  )
+
+  const confirmMutualCancelFromEvent = useCallback(async () => {
+    if (isConfirmingCancelRef.current) {
+      return
+    }
+    isConfirmingCancelRef.current = true
+    try {
+      const { result } = await postMutualCancel("confirm")
+
+      if (result.success && result.status === "cancelled") {
+        router.replace("/home")
+        return
+      }
+
+      if (result.success && result.status === "cancel_requested") {
+        setActionText("Waiting for other party to confirm cancellation")
+      }
+    } catch {
+      // Keep realtime listener resilient; no UI interruption needed here.
+    } finally {
+      isConfirmingCancelRef.current = false
+    }
+  }, [postMutualCancel, router])
+
   useEffect(() => {
     const channel = supabase.channel(`transaction:${transactionId}`)
     channelRef.current = channel
 
     channel
-      .on("broadcast", { event: "mutual_cancel" }, () => redirectForEvent("mutual_cancel"))
+      .on("broadcast", { event: "mutual_cancel" }, () => {
+        void confirmMutualCancelFromEvent()
+      })
       .on("broadcast", { event: "code_validated" }, () => redirectForEvent("code_validated"))
       .on("broadcast", { event: "dispute_filed" }, () => redirectForEvent("dispute_filed"))
       .on(
@@ -161,7 +222,7 @@ export default function MeetupPage({ params }: MeetupPageProps) {
         (payload) => {
           const nextStatus = (payload.new as { status?: string | null })?.status
           if (nextStatus === "refunded") {
-            redirectForEvent("mutual_cancel")
+            router.replace("/home")
           } else if (nextStatus === "completed") {
             redirectForEvent("code_validated")
           } else if (nextStatus === "disputed") {
@@ -190,72 +251,18 @@ export default function MeetupPage({ params }: MeetupPageProps) {
       }
       channelRef.current = null
     }
-  }, [redirectForEvent, supabase, transactionId])
+  }, [confirmMutualCancelFromEvent, redirectForEvent, router, supabase, transactionId])
 
-  useEffect(() => {
-    if (isSeller && !isLockedOut) {
-      inputRefs.current[0]?.focus()
-    }
-  }, [isSeller, isLockedOut])
-
-  const broadcastEvent = useCallback(async (
-    eventName: "mutual_cancel" | "code_validated" | "dispute_filed"
-  ) => {
-    if (!channelRef.current) {
-      return
-    }
-
-    await channelRef.current.send({
-      type: "broadcast",
-      event: eventName,
-      payload: {
-        transactionId,
-      },
-    })
-  }, [transactionId])
-
-  const handleCodeChange = (index: number, value: string) => {
-    if (isLockedOut || isValidating) {
-      return
-    }
-
-    const digit = value.replace(/\D/g, "").slice(-1)
-    setValidationState(null)
-    setErrorText(null)
-
-    setCodeDigits((previous) => {
-      const next = [...previous]
-      next[index] = digit
-      return next
-    })
-
-    if (digit && index < 3) {
-      inputRefs.current[index + 1]?.focus()
-    }
-  }
-
-  const handleCodeKeyDown = (
-    index: number,
-    event: React.KeyboardEvent<HTMLInputElement>
-  ) => {
-    if (event.key === "Backspace" && !codeDigits[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus()
-    }
-  }
-
-  const validateCompletedCode = useCallback(async () => {
-    if (!isSeller || isLockedOut || isValidating) {
-      return
-    }
-
-    const code = codeDigits.join("")
-    if (!/^\d{4}$/.test(code)) {
+  const handleSellerCodeSubmit = useCallback(async (code: string) => {
+    if (!isSeller || sellerIsLocked || isValidating) {
       return
     }
 
     setIsValidating(true)
     setErrorText(null)
     setActionText(null)
+    setSellerIsError(false)
+    setSellerIsCorrect(false)
 
     try {
       const response = await fetch(`/api/transactions/${transactionId}/validate-code`, {
@@ -267,58 +274,40 @@ export default function MeetupPage({ params }: MeetupPageProps) {
       })
       const result = (await response.json().catch(() => ({}))) as ValidateCodeResponse
 
-      if (response.ok && (result.valid || result.alreadyValidated)) {
-        setValidationState("success")
+      if (response.ok && result.success && result.transaction?.status === "completed") {
+        setSellerIsCorrect(true)
+        setAttemptsRemaining(undefined)
         await broadcastEvent("code_validated")
         setActionText("Code verified. Completing handoff...")
-        setTimeout(() => redirectForEvent("code_validated"), 650)
+        setTimeout(() => {
+          router.replace(`/rating/${transactionId}`)
+        }, 1500)
         return
       }
 
-      setValidationState("error")
-      setFailedAttempts((previous) => Math.min(MAX_ATTEMPTS, previous + 1))
-      setCodeDigits(["", "", "", ""])
-      inputRefs.current[0]?.focus()
-      setErrorText(result.error ?? "Incorrect code.")
+      if (result.error === "invalid_code") {
+        setSellerIsError(true)
+        setAttemptsRemaining(result.attempts_remaining)
+        setTimeout(() => setSellerIsError(false), 450)
+        return
+      }
+
+      if (result.error === "locked_out") {
+        setSellerIsLocked(true)
+        setAttemptsRemaining(0)
+        setErrorText("Too many attempts. Contact support.")
+        return
+      }
+
+      setErrorText("Unable to validate code.")
     } catch {
       setErrorText("Network error while validating code.")
     } finally {
       setIsValidating(false)
-      setTimeout(() => setValidationState(null), 420)
     }
   }, [
-    broadcastEvent,
-    codeDigits,
-    isLockedOut,
-    isSeller,
-    isValidating,
-    redirectForEvent,
-    transactionId,
+    broadcastEvent, isSeller, isValidating, router, sellerIsLocked, transactionId
   ])
-
-  useEffect(() => {
-    if (!isSeller) {
-      return
-    }
-
-    const complete = codeDigits.every((digit) => digit.length === 1)
-    if (complete) {
-      void validateCompletedCode()
-    }
-  }, [codeDigits, isSeller, validateCompletedCode])
-
-  const handleCopyCode = async () => {
-    if (!transaction?.handoffCode) {
-      return
-    }
-
-    try {
-      await navigator.clipboard.writeText(transaction.handoffCode)
-      showCopiedToast()
-    } catch {
-      setErrorText("Unable to copy code. Please copy manually.")
-    }
-  }
 
   const handleMutualCancel = async () => {
     if (isSubmittingCancel) {
@@ -329,19 +318,31 @@ export default function MeetupPage({ params }: MeetupPageProps) {
     setActionText(null)
 
     try {
-      const response = await fetch(`/api/transactions/${transactionId}/mutual-cancel`, {
-        method: "POST",
-      })
-      const result = (await response.json().catch(() => ({}))) as ActionApiResponse
+      const { response, result } = await postMutualCancel("initiate")
 
-      if (!response.ok || !result.success) {
-        setErrorText(result.error ?? "Unable to cancel transaction.")
+      if (result.error === "not_authorized") {
+        showToast("You are not authorized to cancel this transaction")
         return
       }
 
-      setActionText(result.message ?? "Transaction cancelled.")
-      await broadcastEvent("mutual_cancel")
-      setTimeout(() => redirectForEvent("mutual_cancel"), 500)
+      if (!response.ok) {
+        setErrorText("Unable to cancel transaction.")
+        return
+      }
+
+      if (result.success && result.status === "cancel_requested") {
+        setActionText("Waiting for other party to confirm cancellation")
+        await broadcastEvent("mutual_cancel", { status: "cancel_requested" })
+        return
+      }
+
+      if (result.success && result.status === "cancelled") {
+        await broadcastEvent("mutual_cancel", { status: "cancelled" })
+        router.replace("/home")
+        return
+      }
+
+      setErrorText("Unable to cancel transaction.")
     } catch {
       setErrorText("Network error while cancelling transaction.")
     } finally {
@@ -399,17 +400,9 @@ export default function MeetupPage({ params }: MeetupPageProps) {
                 <p className="mt-1 text-sm text-white/60">
                   Show this code to the seller during meetup.
                 </p>
-
-                <button
-                  type="button"
-                  onClick={handleCopyCode}
-                  className="mt-4 w-full rounded-2xl border border-white/10 bg-brand-card p-6 text-center transition hover:border-brand-yellow/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow/30"
-                >
-                  <p className="text-xs uppercase tracking-wider text-white/60">Tap to copy</p>
-                  <p className="mt-2 font-mono text-5xl font-black tracking-[0.25em] text-brand-yellow">
-                    {transaction.handoffCode ?? "----"}
-                  </p>
-                </button>
+                <div className="mt-4">
+                  <HandoffCode role="buyer" code={transaction.handoffCode ?? undefined} />
+                </div>
 
                 <div className="mt-4 grid gap-2">
                   <Button
@@ -439,42 +432,18 @@ export default function MeetupPage({ params }: MeetupPageProps) {
                   Ask buyer for the 4-digit code to complete handoff.
                 </p>
 
-                <div
-                  className={`mt-4 rounded-2xl border bg-brand-card p-4 transition ${
-                    validationState === "success"
-                      ? "border-green-400 flash-success"
-                      : validationState === "error"
-                        ? "border-red-400 shake-error"
-                        : "border-white/10"
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-2 sm:gap-3">
-                    {codeDigits.map((digit, index) => (
-                      <Input
-                        key={index}
-                        ref={(element) => {
-                          inputRefs.current[index] = element
-                        }}
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={1}
-                        value={digit}
-                        onChange={(event) => handleCodeChange(index, event.target.value)}
-                        onKeyDown={(event) => handleCodeKeyDown(index, event)}
-                        disabled={isLockedOut || isValidating}
-                        className="h-14 w-12 rounded-xl border-white/15 bg-brand-card px-0 text-center font-mono text-2xl font-bold text-brand-yellow focus-visible:border-brand-yellow focus-visible:ring-brand-yellow/30 sm:w-14"
-                      />
-                    ))}
-                  </div>
-
-                  <p className="mt-3 text-center text-xs text-white/60">
-                    Attempts: {failedAttempts}/{MAX_ATTEMPTS}
-                  </p>
-
-                  {isLockedOut ? (
+                <div className="mt-4">
+                  <HandoffCode
+                    role="seller"
+                    onSubmit={(code) => void handleSellerCodeSubmit(code)}
+                    isCorrect={sellerIsCorrect}
+                    isError={sellerIsError}
+                    isLocked={sellerIsLocked}
+                    attemptsRemaining={attemptsRemaining}
+                  />
+                  {sellerIsLocked ? (
                     <p className="mt-2 text-center text-sm font-semibold text-red-300">
-                      Too many failed attempts. Meetup is locked.
+                      Too many attempts. Contact support.
                     </p>
                   ) : null}
                 </div>
@@ -496,49 +465,11 @@ export default function MeetupPage({ params }: MeetupPageProps) {
         ) : null}
       </div>
 
-      {copyToast ? (
+      {toastMessage ? (
         <div className="fixed inset-x-0 top-4 z-50 mx-auto w-fit rounded-full bg-brand-yellow px-4 py-2 text-sm font-semibold text-black shadow-lg">
-          Copied!
+          {toastMessage}
         </div>
       ) : null}
-
-      <style jsx>{`
-        .flash-success {
-          animation: successFlash 420ms ease-out;
-        }
-
-        .shake-error {
-          animation: shakeX 340ms ease-in-out;
-        }
-
-        @keyframes successFlash {
-          0% {
-            box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5);
-          }
-          100% {
-            box-shadow: 0 0 0 12px rgba(74, 222, 128, 0);
-          }
-        }
-
-        @keyframes shakeX {
-          0%,
-          100% {
-            transform: translateX(0);
-          }
-          20% {
-            transform: translateX(-6px);
-          }
-          40% {
-            transform: translateX(6px);
-          }
-          60% {
-            transform: translateX(-4px);
-          }
-          80% {
-            transform: translateX(4px);
-          }
-        }
-      `}</style>
     </main>
   )
 }

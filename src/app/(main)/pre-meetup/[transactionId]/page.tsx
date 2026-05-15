@@ -37,8 +37,9 @@ type TransactionApiResponse = {
 
 type CancelApiResponse = {
   success?: boolean
+  status?: "cancel_requested" | "cancelled" | string
   message?: string
-  error?: string
+  error?: "not_authorized" | string
 }
 
 const MEETUP_SPOTS = [
@@ -58,8 +59,10 @@ export default function PreMeetupPage({ params }: PreMeetupPageProps) {
   const [errorText, setErrorText] = useState<string | null>(null)
   const [cancelText, setCancelText] = useState<string | null>(null)
   const [isCancelling, setIsCancelling] = useState(false)
+  const [cancelRequested, setCancelRequested] = useState(false)
   const [isIdentityClear, setIsIdentityClear] = useState(false)
   const [selectedSpotId, setSelectedSpotId] = useState(MEETUP_SPOTS[0].id)
+  const [toastText, setToastText] = useState<string | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => setIsIdentityClear(true), 80)
@@ -142,15 +145,37 @@ export default function PreMeetupPage({ params }: PreMeetupPageProps) {
     setIsCancelling(true)
     setErrorText(null)
     setCancelText(null)
+    setToastText(null)
 
     try {
       const response = await fetch(`/api/transactions/${transaction.id}/mutual-cancel`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "initiate" }),
       })
       const result = (await response.json().catch(() => ({}))) as CancelApiResponse
 
+      if (result.error === "not_authorized") {
+        setToastText("You are not authorized to cancel this transaction")
+        setTimeout(() => setToastText(null), 1800)
+        return
+      }
+
       if (!response.ok || !result.success) {
-        setErrorText(result.error ?? "Unable to cancel order.")
+        setErrorText("Unable to cancel order.")
+        return
+      }
+
+      if (result.status === "cancel_requested") {
+        setCancelRequested(true)
+        setCancelText("Cancellation requested. Waiting for other party.")
+        return
+      }
+
+      if (result.status === "cancelled") {
+        router.replace("/home")
         return
       }
 
@@ -295,19 +320,31 @@ export default function PreMeetupPage({ params }: PreMeetupPageProps) {
               >
                 Message
               </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleCancelOrder}
-                disabled={isCancelling || transaction.status === "refunded"}
-                className="h-10"
-              >
-                {isCancelling ? "Cancelling..." : "Cancel Order"}
-              </Button>
+              {cancelRequested ? (
+                <p className="h-10 rounded-md border border-white/10 bg-brand-card px-3 py-2 text-center text-sm text-white/80">
+                  Cancellation requested. Waiting for other party.
+                </p>
+              ) : (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleCancelOrder}
+                  disabled={isCancelling || transaction.status === "refunded"}
+                  className="h-10"
+                >
+                  {isCancelling ? "Cancelling..." : "Cancel Order"}
+                </Button>
+              )}
             </div>
           </>
         ) : null}
       </div>
+
+      {toastText ? (
+        <div className="fixed inset-x-0 top-4 z-50 mx-auto w-fit rounded-full bg-brand-yellow px-4 py-2 text-sm font-semibold text-black shadow-lg">
+          {toastText}
+        </div>
+      ) : null}
     </main>
   )
 }
