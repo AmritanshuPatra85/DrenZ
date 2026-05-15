@@ -1,6 +1,24 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const protectedRoutes = [
+  "/home",
+  "/search",
+  "/sell",
+  "/messages",
+  "/profile",
+  "/listing",
+  "/chat",
+  "/checkout",
+  "/my-listings",
+  "/my-purchases",
+  "/dispute",
+  "/meetup",
+  "/pre-meetup",
+  "/rating",
+  "/user",
+];
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -25,12 +43,20 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { pathname } = request.nextUrl;
+
+  const isProtected = protectedRoutes.some((route) =>
+    pathname.startsWith(route)
+  );
+  const isOnboarding = pathname.startsWith("/onboarding");
 
   // Not logged in — redirect to login
   if (!user) {
-    if (pathname.startsWith("/main") || pathname.startsWith("/onboarding")) {
+    if (isProtected || isOnboarding) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
     return supabaseResponse;
@@ -43,29 +69,51 @@ export async function middleware(request: NextRequest) {
     .eq("id", user.id)
     .single();
 
-  // No profile yet — send to whatsapp verification
-  if (!profile && !pathname.startsWith("/onboarding/whatsapp")) {
-    return NextResponse.redirect(new URL("/onboarding/whatsapp", request.url));
-  }
-
-  // Has profile but no phone — send to whatsapp
-  if (profile && !profile.phone && !pathname.startsWith("/onboarding/whatsapp")) {
-    return NextResponse.redirect(new URL("/onboarding/whatsapp", request.url));
+  // No profile or no phone — send to whatsapp verification
+  if (
+    (!profile || !profile.phone) &&
+    !pathname.startsWith("/onboarding/whatsapp")
+  ) {
+    return NextResponse.redirect(
+      new URL("/onboarding/whatsapp", request.url)
+    );
   }
 
   // Has phone but no alias — send to alias picker
-  if (profile && profile.phone && !profile.alias && !pathname.startsWith("/onboarding/alias")) {
+  if (
+    profile &&
+    profile.phone &&
+    !profile.alias &&
+    !pathname.startsWith("/onboarding/alias")
+  ) {
     return NextResponse.redirect(new URL("/onboarding/alias", request.url));
   }
 
-  // Fully onboarded but trying to access onboarding — send to main
-  if (profile && profile.phone && profile.alias && pathname.startsWith("/onboarding")) {
-    return NextResponse.redirect(new URL("/main", request.url));
+  // Fully onboarded but trying to access onboarding — send to home
+  if (profile && profile.phone && profile.alias && isOnboarding) {
+    return NextResponse.redirect(new URL("/home", request.url));
   }
 
   return supabaseResponse;
 }
 
 export const config = {
-  matcher: ["/main/:path*", "/onboarding/:path*"],
+  matcher: [
+    "/home/:path*",
+    "/search/:path*",
+    "/sell/:path*",
+    "/messages/:path*",
+    "/profile/:path*",
+    "/listing/:path*",
+    "/chat/:path*",
+    "/checkout/:path*",
+    "/my-listings/:path*",
+    "/my-purchases/:path*",
+    "/dispute/:path*",
+    "/meetup/:path*",
+    "/pre-meetup/:path*",
+    "/rating/:path*",
+    "/user/:path*",
+    "/onboarding/:path*",
+  ],
 };
