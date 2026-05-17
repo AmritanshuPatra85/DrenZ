@@ -28,13 +28,13 @@ function SellForm() {
   const editId = searchParams.get("edit");
   const isEdit = !!editId;
 
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted,  setSubmitted]  = useState(false);
-  const [uploading,  setUploading]  = useState(false);
-  const [loading,    setLoading]    = useState(isEdit);
-  const [images,     setImages]     = useState<File[]>([]);
-  const [previews,   setPreviews]   = useState<string[]>([]);
-  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [submitting,      setSubmitting]      = useState(false);
+  const [submitted,       setSubmitted]       = useState(false);
+  const [uploading,       setUploading]       = useState(false);
+  const [loading,         setLoading]         = useState(isEdit);
+  const [images,          setImages]          = useState<File[]>([]);
+  const [previews,        setPreviews]        = useState<string[]>([]);
+  const [existingImages,  setExistingImages]  = useState<string[]>([]);
   const [form, setForm] = useState({
     title: "", category: "", condition: "", size: "", brand: "", price: "", description: "",
   });
@@ -62,8 +62,8 @@ function SellForm() {
           price:       String(data.price ?? ""),
           description: data.description ?? "",
         });
-        setExistingImages(data.images ?? []);
-        setPreviews(data.images ?? []);
+        setExistingImages(data.image_urls ?? (data.image_url ? [data.image_url] : []));
+        setPreviews(data.image_urls ?? (data.image_url ? [data.image_url] : []));
       }
       setLoading(false);
     };
@@ -80,7 +80,6 @@ function SellForm() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSubmitting(false); return; }
 
-    // Upload new images
     setUploading(true);
     const newImageUrls: string[] = [];
     for (const file of images) {
@@ -101,7 +100,8 @@ function SellForm() {
           price:       Number(form.price),
           brand:       form.brand || null,
           description: form.description || null,
-          images:      allImages,
+          image_url:   allImages[0] ?? null,
+          image_urls:  allImages,
         })
         .eq("id", editId);
 
@@ -118,7 +118,8 @@ function SellForm() {
         description: form.description || null,
         seller_id:   user.id,
         status:      "active",
-        images:      allImages,
+        image_url:   allImages[0] ?? null,
+        image_urls:  allImages,
         college:     "KIIT",
       });
 
@@ -192,7 +193,7 @@ function SellForm() {
           {previews.length < 4 && (
             <label className="flex flex-col items-center justify-center gap-2 cursor-pointer py-4">
               <span className="text-3xl">📷</span>
-              <p className="text-white/40 text-sm">Tap to add photos</p>
+              <p className="text-white/40 text-sm">{isEdit ? "Replace photos" : "Tap to add photos"}</p>
               <p className="text-white/20 text-xs">{previews.length}/4 photos</p>
               <input
                 type="file" accept="image/*" multiple className="hidden"
@@ -297,7 +298,7 @@ function SellForm() {
   );
 }
 
-export default function SellPage() {
+export default function SellPageWrapper() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-brand-dark" />}>
       <SellForm />
