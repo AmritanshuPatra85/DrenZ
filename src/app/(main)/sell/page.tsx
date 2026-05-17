@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import BottomNav from "@/components/BottomNav";
 import { uploadListingImage } from "@/lib/image-utils";
@@ -22,13 +22,19 @@ const CONDITIONS = [
 
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL", "Free Size"];
 
-export default function CreateListing() {
+function SellForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+  const isEdit = !!editId;
+
   const [submitting, setSubmitting] = useState(false);
   const [submitted,  setSubmitted]  = useState(false);
   const [uploading,  setUploading]  = useState(false);
+  const [loading,    setLoading]    = useState(isEdit);
   const [images,     setImages]     = useState<File[]>([]);
   const [previews,   setPreviews]   = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [form, setForm] = useState({
     title: "", category: "", condition: "", size: "", brand: "", price: "", description: "",
   });
@@ -38,9 +44,34 @@ export default function CreateListing() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const set = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
+  useEffect(() => {
+    if (!editId) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("listings")
+        .select("*")
+        .eq("id", editId)
+        .single();
+      if (data) {
+        setForm({
+          title:       data.title ?? "",
+          category:    data.category ?? "",
+          condition:   data.condition ?? "",
+          size:        data.size ?? "",
+          brand:       data.brand ?? "",
+          price:       String(data.price ?? ""),
+          description: data.description ?? "",
+        });
+        setExistingImages(data.images ?? []);
+        setPreviews(data.images ?? []);
+      }
+      setLoading(false);
+    };
+    load();
+  }, [editId]);
 
-  const isValid = form.title && form.category && form.condition && form.size && form.price;
+  const set = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
+  const isValid = form.title && form.category && form.condition && form.price;
 
   const handleSubmit = async () => {
     if (!isValid) return;
@@ -49,36 +80,59 @@ export default function CreateListing() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSubmitting(false); return; }
 
+    // Upload new images
     setUploading(true);
-    const imageUrls: string[] = [];
+    const newImageUrls: string[] = [];
     for (const file of images) {
       const url = await uploadListingImage(file, user.id);
-      if (url) imageUrls.push(url);
+      if (url) newImageUrls.push(url);
     }
     setUploading(false);
 
-    const { error } = await supabase.from("listings").insert({
-      title:       form.title,
-      category:    form.category,
-      condition:   form.condition,
-      size:        form.size,
-      brand:       form.brand || null,
-      price:       Number(form.price),
-      description: form.description || null,
-      seller_id:   user.id,
-      status:      "active",
-      image_url:   imageUrls[0] ?? null,
-      image_urls:  imageUrls,
-      college:     "KIIT",
-    });
+    const allImages = [...existingImages, ...newImageUrls];
 
-    setSubmitting(false);
-    if (error) {
-      alert(error.message);
+    if (isEdit) {
+      const { error } = await supabase
+        .from("listings")
+        .update({
+          title:       form.title,
+          category:    form.category,
+          condition:   form.condition,
+          price:       Number(form.price),
+          brand:       form.brand || null,
+          description: form.description || null,
+          images:      allImages,
+        })
+        .eq("id", editId);
+
+      setSubmitting(false);
+      if (error) { alert(error.message); return; }
+      router.push(`/listing/${editId}`);
     } else {
+      const { error } = await supabase.from("listings").insert({
+        title:       form.title,
+        category:    form.category,
+        condition:   form.condition,
+        price:       Number(form.price),
+        brand:       form.brand || null,
+        description: form.description || null,
+        seller_id:   user.id,
+        status:      "active",
+        images:      allImages,
+        college:     "KIIT",
+      });
+
+      setSubmitting(false);
+      if (error) { alert(error.message); return; }
       setSubmitted(true);
     }
   };
+
+  if (loading) return (
+    <main className="min-h-screen bg-brand-dark flex items-center justify-center">
+      <p className="text-white/30 text-sm">Loading…</p>
+    </main>
+  );
 
   if (submitted) return (
     <main className="min-h-screen bg-brand-dark flex flex-col items-center justify-center px-6 text-center">
@@ -93,6 +147,7 @@ export default function CreateListing() {
         setSubmitted(false);
         setImages([]);
         setPreviews([]);
+        setExistingImages([]);
         setForm({ title:"", category:"", condition:"", size:"", brand:"", price:"", description:"" });
       }}
         className="mt-3 text-white/40 text-sm">
@@ -104,10 +159,9 @@ export default function CreateListing() {
   return (
     <main className="min-h-screen bg-brand-dark text-white pb-32">
 
-      {/* Header */}
       <div className="px-4 pt-6 pb-4 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-white/50 text-sm">← Back</button>
-        <h1 className="text-white font-bold text-lg flex-1 text-center">New Listing</h1>
+        <h1 className="text-white font-bold text-lg flex-1 text-center">{isEdit ? "Edit Listing" : "New Listing"}</h1>
         <div className="w-12" />
       </div>
 
@@ -121,7 +175,12 @@ export default function CreateListing() {
                   <img src={src} className="w-full h-full object-cover rounded-xl" />
                   <button
                     onClick={() => {
-                      setImages(prev => prev.filter((_, j) => j !== i));
+                      const isExisting = i < existingImages.length;
+                      if (isExisting) {
+                        setExistingImages(prev => prev.filter((_, j) => j !== i));
+                      } else {
+                        setImages(prev => prev.filter((_, j) => j !== (i - existingImages.length)));
+                      }
                       setPreviews(prev => prev.filter((_, j) => j !== i));
                     }}
                     className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
@@ -153,18 +212,14 @@ export default function CreateListing() {
       </div>
 
       <div className="px-4 space-y-4">
-
-        {/* Title */}
         <div>
           <label className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-2 block">Title *</label>
-          <input
-            type="text" placeholder="e.g. H&M Oversized Hoodie"
+          <input type="text" placeholder="e.g. H&M Oversized Hoodie"
             value={form.title} onChange={e => set("title", e.target.value)}
             className="w-full bg-brand-card border border-white/10 rounded-2xl px-4 py-3 text-white text-sm placeholder-white/30 outline-none focus:border-brand-yellow/50"
           />
         </div>
 
-        {/* Category */}
         <div>
           <label className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-2 block">Category *</label>
           <div className="flex flex-wrap gap-2">
@@ -177,7 +232,6 @@ export default function CreateListing() {
           </div>
         </div>
 
-        {/* Condition */}
         <div>
           <label className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-2 block">Condition *</label>
           <div className="flex gap-2">
@@ -190,9 +244,8 @@ export default function CreateListing() {
           </div>
         </div>
 
-        {/* Size */}
         <div>
-          <label className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-2 block">Size *</label>
+          <label className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-2 block">Size</label>
           <div className="flex flex-wrap gap-2">
             {SIZES.map(s => (
               <button key={s} onClick={() => set("size", s)}
@@ -203,31 +256,25 @@ export default function CreateListing() {
           </div>
         </div>
 
-        {/* Brand */}
         <div>
           <label className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-2 block">Brand</label>
-          <input
-            type="text" placeholder="e.g. Zara, H&M, Nike (optional)"
+          <input type="text" placeholder="e.g. Zara, H&M, Nike (optional)"
             value={form.brand} onChange={e => set("brand", e.target.value)}
             className="w-full bg-brand-card border border-white/10 rounded-2xl px-4 py-3 text-white text-sm placeholder-white/30 outline-none focus:border-brand-yellow/50"
           />
         </div>
 
-        {/* Price */}
         <div>
           <label className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-2 block">Price (₹) *</label>
-          <input
-            type="number" placeholder="e.g. 499"
+          <input type="number" placeholder="e.g. 499"
             value={form.price} onChange={e => set("price", e.target.value)}
             className="w-full bg-brand-card border border-white/10 rounded-2xl px-4 py-3 text-white text-sm placeholder-white/30 outline-none focus:border-brand-yellow/50"
           />
         </div>
 
-        {/* Description */}
         <div>
           <label className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-2 block">Description</label>
-          <textarea
-            placeholder="Describe your item — size fit, wear, any flaws…"
+          <textarea placeholder="Describe your item…"
             value={form.description} onChange={e => set("description", e.target.value)}
             rows={3}
             className="w-full bg-brand-card border border-white/10 rounded-2xl px-4 py-3 text-white text-sm placeholder-white/30 outline-none focus:border-brand-yellow/50 resize-none"
@@ -235,20 +282,25 @@ export default function CreateListing() {
         </div>
       </div>
 
-      {/* Submit */}
       <div className="fixed bottom-16 left-0 right-0 px-4 pb-2 pt-3 bg-brand-dark border-t border-white/5">
-        <button
-          onClick={handleSubmit}
-          disabled={!isValid || submitting || uploading}
+        <button onClick={handleSubmit} disabled={!isValid || submitting || uploading}
           className={`w-full font-bold text-base py-4 rounded-2xl transition-opacity ${
             isValid ? "bg-brand-yellow text-black" : "bg-white/10 text-white/30"
           } disabled:opacity-50`}
         >
-          {uploading ? "Uploading photos…" : submitting ? "Publishing…" : "Publish Listing →"}
+          {uploading ? "Uploading photos…" : submitting ? "Saving…" : isEdit ? "Save Changes →" : "Publish Listing →"}
         </button>
       </div>
 
       <BottomNav />
     </main>
+  );
+}
+
+export default function SellPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-brand-dark" />}>
+      <SellForm />
+    </Suspense>
   );
 }
