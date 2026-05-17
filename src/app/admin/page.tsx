@@ -5,7 +5,6 @@ import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 
 const ADMIN_EMAIL = "amritanshupatra01@gmail.com";
-
 const TABS = ["Users", "Listings", "Transactions", "Disputes"];
 
 export default function AdminPage() {
@@ -45,8 +44,8 @@ export default function AdminPage() {
 
     if (tab === "Users") {
       const { data } = await supabase
-        .from("users")
-        .select("id, alias, phone, college, is_banned, created_at")
+        .from("admin_users")
+        .select("*")
         .order("created_at", { ascending: false });
       result = data ?? [];
     } else if (tab === "Listings") {
@@ -77,19 +76,13 @@ export default function AdminPage() {
   };
 
   const toggleBan = async (userId: string, isBanned: boolean) => {
-    await supabase
-      .from("users")
-      .update({ is_banned: !isBanned })
-      .eq("id", userId);
+    await supabase.from("users").update({ is_banned: !isBanned }).eq("id", userId);
     loadData();
   };
 
   const removeListing = async (listingId: string) => {
     if (!confirm("Remove this listing?")) return;
-    await supabase
-      .from("listings")
-      .update({ status: "removed" })
-      .eq("id", listingId);
+    await supabase.from("listings").update({ status: "removed" }).eq("id", listingId);
     loadData();
   };
 
@@ -105,7 +98,6 @@ export default function AdminPage() {
     <main className="min-h-screen bg-gray-950 text-white">
       <div className="max-w-5xl mx-auto px-4 py-6">
 
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-black text-brand-yellow">drenZ Admin</h1>
@@ -119,7 +111,6 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto">
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
@@ -130,7 +121,6 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {/* Content */}
         {dataLoading ? (
           <p className="text-white/30 text-sm">Loading…</p>
         ) : data.length === 0 ? (
@@ -138,17 +128,22 @@ export default function AdminPage() {
         ) : (
           <div className="space-y-3">
 
-            {/* Users */}
             {tab === "Users" && data.map((u: any) => (
               <div key={u.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-white font-semibold text-sm">{u.alias ?? "No alias"}</p>
-                  <p className="text-white/40 text-xs">{u.phone ?? "No phone"} · {u.college}</p>
-                  <p className="text-white/20 text-xs">{new Date(u.created_at).toLocaleDateString()}</p>
+                <div className="flex items-center gap-3">
+                  {u.avatar_url && (
+                    <img src={u.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                  )}
+                  <div>
+                    <p className="text-white font-semibold text-sm">{u.full_name ?? u.alias ?? "No name"}</p>
+                    <p className="text-white/50 text-xs">{u.email}</p>
+                    <p className="text-white/40 text-xs">{u.phone ?? "No phone"} · {u.alias ?? "No alias"} · {u.college}</p>
+                    <p className="text-white/20 text-xs">{new Date(u.created_at).toLocaleDateString()}</p>
+                  </div>
                 </div>
                 <button
                   onClick={() => toggleBan(u.id, u.is_banned)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold ${
+                  className={`px-4 py-2 rounded-xl text-xs font-bold shrink-0 ${
                     u.is_banned ? "bg-green-900 text-green-400" : "bg-red-900 text-red-400"
                   }`}
                 >
@@ -157,7 +152,6 @@ export default function AdminPage() {
               </div>
             ))}
 
-            {/* Listings */}
             {tab === "Listings" && data.map((l: any) => (
               <div key={l.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between gap-3">
                 <div>
@@ -166,17 +160,14 @@ export default function AdminPage() {
                   <p className="text-white/40 text-xs">by {l.seller?.alias ?? "unknown"}</p>
                 </div>
                 {l.status === "active" && (
-                  <button
-                    onClick={() => removeListing(l.id)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold bg-red-900 text-red-400"
-                  >
+                  <button onClick={() => removeListing(l.id)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-red-900 text-red-400 shrink-0">
                     Remove
                   </button>
                 )}
               </div>
             ))}
 
-            {/* Transactions */}
             {tab === "Transactions" && data.map((t: any) => (
               <div key={t.id} className="bg-white/5 border border-white/10 rounded-2xl p-4">
                 <p className="text-white font-semibold text-sm">{t.listing?.title ?? "Unknown listing"}</p>
@@ -185,7 +176,6 @@ export default function AdminPage() {
               </div>
             ))}
 
-            {/* Disputes */}
             {tab === "Disputes" && data.map((d: any) => (
               <div key={d.id} className="bg-white/5 border border-white/10 rounded-2xl p-4">
                 <p className="text-white font-semibold text-sm">Dispute #{d.id.slice(0, 8)}</p>
