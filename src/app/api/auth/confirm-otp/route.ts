@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const isDev = process.env.NODE_ENV === 'development'
+    const isDev = process.env.NODE_ENV === "development";
 
     if (!isDev) {
       const entry = otpStore.get(phone);
@@ -35,16 +35,12 @@ export async function POST(request: Request) {
       }
 
       if (entry.otp !== otp) {
-        return NextResponse.json(
-          { error: "Invalid OTP" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Invalid OTP" }, { status: 400 });
       }
 
       otpStore.delete(phone);
     }
 
-    // Link phone to user record
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 

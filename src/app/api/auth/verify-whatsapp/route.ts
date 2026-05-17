@@ -1,30 +1,10 @@
 import { NextResponse } from "next/server";
 import { authSchema } from "@/lib/validations";
-
-// In-memory rate limit store (resets on server restart — fine for MVP)
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-function isRateLimited(phone: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(phone);
-
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(phone, { count: 1, resetAt: now + 60 * 60 * 1000 });
-    return false;
-  }
-
-  if (entry.count >= 3) return true;
-
-  entry.count++;
-  return false;
-}
+import { createClient } from "@/lib/supabase/server";
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
-
-// Temporary OTP store (use Redis in production)
-export const otpStore = new Map<string, { otp: string; expiresAt: number }>();
 
 export async function POST(request: Request) {
   try {
@@ -32,15 +12,21 @@ export async function POST(request: Request) {
     const parsed = authSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid phone number" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
     }
 
     const { phone } = parsed.data;
+    const supabase = createClient();
 
-    if (isRateLimited(phone)) {
+    // Rate limit check via Supabase
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count } = await supabase
+      .from("otp_store")
+      .select("*", { count: "exact", head: true })
+      .eq("phone", phone)
+      .gte("created_at", oneHourAgo);
+
+    if (count && count >= 3) {
       return NextResponse.json(
         { error: "Rate limit exceeded. Try again in 1 hour." },
         { status: 429 }
@@ -48,15 +34,21 @@ export async function POST(request: Request) {
     }
 
     const otp = generateOtp();
-    otpStore.set(phone, {
-      otp,
-      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
-    });
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-    // Send via Wati if configured, otherwise log for testing
+    // Upsert OTP into Supabase
+    await supabase
+      .from("otp_store")
+      .upsert({ phone, otp, expires_at: expiresAt, created_at: new Date().toISOString() });
+
+    // Send via Wati if configured
     if (process.env.WATI_API_URL && process.env.WATI_API_TOKEN) {
-      const { wati } = await import("@/lib/wati");
-      await wati.sendOtp(phone, otp);
+      try {
+        const { wati } = await import("@/lib/wati");
+        await wati.sendOtp(phone, otp);
+      } catch (watiError) {
+        console.error("Wati send failed:", watiError);
+      }
     } else {
       console.log(`[DEV] OTP for ${phone}: ${otp}`);
     }

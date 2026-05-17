@@ -41,7 +41,7 @@ export default function HomeFeed() {
     .eq("status", "active")
     .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
-  if (user) query = query.neq("seller_id", user.id);
+  
   if (cat !== "All") query = query.eq("category", cat.toLowerCase());
 
   const { data, error } = await query;
