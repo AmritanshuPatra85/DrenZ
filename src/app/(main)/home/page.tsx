@@ -37,7 +37,7 @@ export default function HomeFeed() {
 
   let query = supabase
     .from("listings")
-    .select("id, title, price, condition, category, images, seller:users(alias, college)")
+    .select("id, title, price, condition, category, images,image_url, seller:users(alias, college)")
     .eq("status", "active")
     .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
@@ -52,7 +52,7 @@ export default function HomeFeed() {
   } else {
     const shaped = data.map((l: any) => ({
       ...l,
-      image_url: l.images?.[0] ?? null,
+      image_url: l.image_url ?? l.images?.[0] ?? null,
       seller_alias: l.seller?.alias,
       seller_dept: l.seller?.college,
     }));

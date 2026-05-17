@@ -17,26 +17,35 @@ type Listing = {
 };
 
 const CONDITION_STYLES: Record<string, { bg: string; text: string }> = {
-  "Like New": { bg: "bg-green-950",  text: "text-green-400"  },
-  "Good":     { bg: "bg-lime-950",   text: "text-lime-400"   },
-  "Fair":     { bg: "bg-orange-950", text: "text-orange-400" },
+  "like_new": { bg: "bg-green-950",  text: "text-green-400"  },
+  "good":     { bg: "bg-lime-950",   text: "text-lime-400"   },
+  "fair":     { bg: "bg-orange-950", text: "text-orange-400" },
+  "new":      { bg: "bg-blue-950",   text: "text-blue-400"   },
+};
+
+const CONDITION_LABELS: Record<string, string> = {
+  "like_new": "Like New",
+  "good":     "Good",
+  "fair":     "Fair",
+  "new":      "New",
 };
 
 const CATEGORY_STYLES: Record<string, { bg: string; emoji: string }> = {
-  "Tops":        { bg: "#1a2440", emoji: "👕" },
-  "Bottoms":     { bg: "#1a3020", emoji: "👖" },
-  "Shoes":       { bg: "#3a1a1a", emoji: "👟" },
-  "Bags":        { bg: "#3a2e10", emoji: "👜" },
-  "Accessories": { bg: "#2e1a3a", emoji: "💍" },
-  "Outerwear":   { bg: "#102a3a", emoji: "🧥" },
+  "tops":        { bg: "#1a2440", emoji: "👕" },
+  "bottoms":     { bg: "#1a3020", emoji: "👖" },
+  "shoes":       { bg: "#3a1a1a", emoji: "👟" },
+  "bags":        { bg: "#3a2e10", emoji: "👜" },
+  "accessories": { bg: "#2e1a3a", emoji: "💍" },
+  "outerwear":   { bg: "#102a3a", emoji: "🧥" },
 };
 const DEFAULT_STYLE = { bg: "#1c1c12", emoji: "👗" };
 
 export default function ListingCard({ listing }: { listing: Listing }) {
   const [liked, setLiked] = useState(listing.is_liked ?? false);
-  const condition = listing.condition ?? "Good";
+  const condition = listing.condition ?? "good";
   const condStyle = CONDITION_STYLES[condition] ?? { bg: "bg-white/10", text: "text-white/50" };
-  const catStyle = CATEGORY_STYLES[listing.category ?? ""] ?? DEFAULT_STYLE;
+  const condLabel = CONDITION_LABELS[condition] ?? condition;
+  const catStyle  = CATEGORY_STYLES[listing.category ?? ""] ?? DEFAULT_STYLE;
 
   return (
     <Link href={`/listing/${listing.id}`} className="block">
@@ -54,9 +63,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <span className="text-4xl">
-              {listing.image_url ? null : catStyle.emoji}
-            </span>
+            <span className="text-4xl">{catStyle.emoji}</span>
           )}
 
           {/* Like button */}
@@ -90,12 +97,11 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             </span>
             {listing.condition && (
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${condStyle.bg} ${condStyle.text}`}>
-                {listing.condition}
+                {condLabel}
               </span>
             )}
           </div>
 
-          {/* Seller */}
           {listing.seller_alias && (
             <p className="text-white/40 text-[10px] truncate">
               {listing.seller_alias}

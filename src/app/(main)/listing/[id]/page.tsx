@@ -45,7 +45,7 @@ export default function ListingDetailPage() {
         .from("listings")
         .select(`
           id, title, price, condition, category,
-          images, description, status, created_at,
+          image_url, image_urls, description, status, created_at,
           seller_id,
           seller:users(alias, college, id)
         `)
@@ -108,7 +108,7 @@ export default function ListingDetailPage() {
   const isOwner    = currentUser?.id === listing.seller_id;
   const catStyle   = CATEGORY_STYLES[listing.category] ?? DEFAULT_STYLE;
   const condStyle  = CONDITION_STYLES[listing.condition] ?? { bg: "bg-white/10", text: "text-white/50" };
-  const images     = listing.images ?? [];
+  const images = listing.image_urls ?? (listing.image_url ? [listing.image_url] : []);
 
   return (
     <main className="min-h-screen bg-brand-dark text-white pb-32">
