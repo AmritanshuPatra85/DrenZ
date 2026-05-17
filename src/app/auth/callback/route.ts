@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const ALLOWED_DOMAINS = ["kiit.ac.in"];
+const ADMIN_EMAILS = ["amritanshupatra01@gmail.com"];
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -39,11 +40,10 @@ export async function GET(request: NextRequest) {
   const email = data.user.email ?? "";
   const domain = email.split("@")[1];
 
-  if (!ALLOWED_DOMAINS.includes(domain)) {
-    await supabase.auth.signOut();
-    return NextResponse.redirect(`${origin}/login?error=invalid_domain`);
-  }
-
+if (!ALLOWED_DOMAINS.includes(domain) && !ADMIN_EMAILS.includes(email)) {
+  await supabase.auth.signOut();
+  return NextResponse.redirect(`${origin}/login?error=invalid_domain`);
+}
   const { data: existingUser } = await supabase
     .from("users")
     .select("id, phone, alias")
