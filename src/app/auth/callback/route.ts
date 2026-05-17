@@ -39,11 +39,23 @@ export async function GET(request: NextRequest) {
 
   const email = data.user.email ?? "";
   const domain = email.split("@")[1];
+  const isAdmin = ADMIN_EMAILS.includes(email);
 
-if (!ALLOWED_DOMAINS.includes(domain) && !ADMIN_EMAILS.includes(email)) {
-  await supabase.auth.signOut();
-  return NextResponse.redirect(`${origin}/login?error=invalid_domain`);
-}
+  if (!isAdmin && !ALLOWED_DOMAINS.includes(domain)) {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(`${origin}/login?error=invalid_domain`);
+  }
+
+  // Admin goes straight to admin page
+  if (isAdmin) {
+    const r = NextResponse.redirect(`${origin}/admin`);
+    response.cookies.getAll().forEach(({ name, value }) => {
+      r.cookies.set(name, value);
+    });
+    return r;
+  }
+
+  // Regular user — check onboarding status
   const { data: existingUser } = await supabase
     .from("users")
     .select("id, phone, alias")
@@ -51,22 +63,20 @@ if (!ALLOWED_DOMAINS.includes(domain) && !ADMIN_EMAILS.includes(email)) {
     .single();
 
   if (!existingUser || !existingUser.phone) {
-    const r = NextResponse.redirect(`${origin}/verify-whatsapp`);
-    cookiesToSet(response, r);
+    const r = NextResponse.redirect(`${origin}/onboarding/whatsapp`);
+    response.cookies.getAll().forEach(({ name, value }) => {
+      r.cookies.set(name, value);
+    });
     return r;
   }
 
   if (!existingUser.alias) {
-    const r = NextResponse.redirect(`${origin}/onboarding`);
-    cookiesToSet(response, r);
+    const r = NextResponse.redirect(`${origin}/onboarding/alias`);
+    response.cookies.getAll().forEach(({ name, value }) => {
+      r.cookies.set(name, value);
+    });
     return r;
   }
 
   return response;
-}
-
-function cookiesToSet(from: NextResponse, to: NextResponse) {
-  from.cookies.getAll().forEach(({ name, value }) => {
-    to.cookies.set(name, value);
-  });
 }
