@@ -3,9 +3,14 @@ import { createBrowserClient } from "@supabase/ssr";
 export async function uploadListingImage(
   file: File,
   userId: string
-): Promise<string | null> {
-  // Compress to 800px
+): Promise<{ url: string | null; blocked: boolean }> {
   const compressed = await compressImage(file, 800);
+
+  // Moderate before upload
+  const isSafe = await moderateImage(compressed);
+  if (!isSafe) {
+    return { url: null, blocked: true };
+  }
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,14 +29,45 @@ export async function uploadListingImage(
 
   if (error) {
     console.error("Image upload failed:", error);
-    return null;
+    return { url: null, blocked: false };
   }
 
   const { data: urlData } = supabase.storage
     .from("listing-images")
     .getPublicUrl(data.path);
 
-  return urlData.publicUrl;
+  return { url: urlData.publicUrl, blocked: false };
+}
+
+async function moderateImage(blob: Blob): Promise<boolean> {
+  try {
+    const formData = new FormData();
+    formData.append("media", blob, "image.jpg");
+    formData.append("models", "nudity-2.0,offensive,gore");
+    formData.append("api_user", process.env.NEXT_PUBLIC_SIGHTENGINE_USER!);
+    formData.append("api_secret", process.env.NEXT_PUBLIC_SIGHTENGINE_SECRET!);
+
+    const res  = await fetch("https://api.sightengine.com/1.0/check.json", {
+      method: "POST",
+      body:   formData,
+    });
+
+    const data = await res.json();
+
+    const nudityScore   = data.nudity?.sexual_activity ?? 0;
+    const offensiveScore = data.offensive?.prob ?? 0;
+    const goreScore     = data.gore?.prob ?? 0;
+
+    // Block if any score > 0.5
+    if (nudityScore > 0.5 || offensiveScore > 0.5 || goreScore > 0.5) {
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error("Moderation check failed:", err);
+    return true; // Allow on moderation API failure
+  }
 }
 
 async function compressImage(file: File, maxPx: number): Promise<Blob> {

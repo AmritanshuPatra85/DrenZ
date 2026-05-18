@@ -74,6 +74,24 @@ export async function middleware(request: NextRequest) {
     .eq("id", user.id)
     .single();
 
+  // Ban check (after fetching profile)
+  const { data: userRecord } = await supabase
+    .from("users")
+    .select("is_banned")
+    .eq("id", user.id)
+    .single();
+
+  if (userRecord?.is_banned) {
+    await supabase.auth.signOut();
+    const redirectResponse = NextResponse.redirect(
+      new URL("/login?error=banned", request.url)
+    );
+    supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
+      redirectResponse.cookies.set(name, value, options);
+    });
+    return redirectResponse;
+  }
+
   const onboardingWhatsapp = pathname.startsWith("/onboarding/whatsapp") || pathname === "/verify-whatsapp";
   const onboardingAlias = pathname.startsWith("/onboarding/alias") || pathname.startsWith("/alias-picker");
 
