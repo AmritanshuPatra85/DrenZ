@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
+import * as XLSX from "xlsx";
 
 const ADMIN_EMAIL = "amritanshupatra01@gmail.com";
 const TABS = ["Users", "Listings", "Transactions", "Disputes"];
@@ -39,7 +40,7 @@ export default function AdminPage() {
 
   const loadStats = async () => {
     const [u, l, t, d] = await Promise.all([
-      supabase.from("users").select("*", { count: "exact", head: true }),
+      supabase.from("admin_users").select("*", { count: "exact", head: true }),
       supabase.from("listings").select("*", { count: "exact", head: true }),
       supabase.from("transactions").select("*", { count: "exact", head: true }),
       supabase.from("disputes").select("*", { count: "exact", head: true }),
@@ -102,31 +103,19 @@ export default function AdminPage() {
     loadStats();
   };
 
-  const downloadCSV = (filename: string, rows: any[]) => {
+  const downloadExcel = (filename: string, rows: any[]) => {
     if (!rows.length) return;
-    const headers = Object.keys(rows[0]).join(",");
-    const csv = [headers, ...rows.map(r =>
-      Object.values(r).map(v =>
-        typeof v === "object" ? JSON.stringify(v) : String(v ?? "")
-      ).join(",")
-    )].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const downloadJSON = (filename: string, rows: any[]) => {
-    const blob = new Blob([JSON.stringify(rows, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    const flat = rows.map(r => {
+      const obj: any = {};
+      for (const [k, v] of Object.entries(r)) {
+        obj[k] = typeof v === "object" ? JSON.stringify(v) : v;
+      }
+      return obj;
+    });
+    const ws = XLSX.utils.json_to_sheet(flat);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, tab);
+    XLSX.writeFile(wb, filename);
   };
 
   if (loading) return (
@@ -158,7 +147,7 @@ export default function AdminPage() {
         {/* Stats */}
         <div className="grid grid-cols-4 gap-3 mb-6">
           {[
-            { label: "Users", value: stats.users, emoji: "👥" },
+            { label: "KIIT Users", value: stats.users, emoji: "👥" },
             { label: "Listings", value: stats.listings, emoji: "👗" },
             { label: "Transactions", value: stats.transactions, emoji: "💳" },
             { label: "Disputes", value: stats.disputes, emoji: "⚠️" },
@@ -182,20 +171,12 @@ export default function AdminPage() {
               >{t}</button>
             ))}
           </div>
-          <div className="flex gap-2 shrink-0 ml-3">
-            <button
-              onClick={() => downloadCSV(`drenz-${tab.toLowerCase()}.csv`, data)}
-              className="bg-white/10 text-white/60 text-xs font-semibold px-3 py-2 rounded-xl hover:bg-white/20"
-            >
-              ⬇ CSV
-            </button>
-            <button
-              onClick={() => downloadJSON(`drenz-${tab.toLowerCase()}.json`, data)}
-              className="bg-white/10 text-white/60 text-xs font-semibold px-3 py-2 rounded-xl hover:bg-white/20"
-            >
-              ⬇ JSON
-            </button>
-          </div>
+          <button
+            onClick={() => downloadExcel(`drenz-${tab.toLowerCase()}.xlsx`, data)}
+            className="bg-green-900 text-green-400 text-xs font-semibold px-4 py-2 rounded-xl hover:bg-green-800 shrink-0 ml-3"
+          >
+            ⬇ Excel
+          </button>
         </div>
 
         {/* Content */}
@@ -215,7 +196,7 @@ export default function AdminPage() {
                   <div>
                     <p className="text-white font-semibold text-sm">{u.full_name ?? u.alias ?? "No name"}</p>
                     <p className="text-white/50 text-xs">{u.email}</p>
-                    <p className="text-white/40 text-xs">{u.phone ?? "No phone"} · {u.alias ?? "No alias"} · {u.college}</p>
+                    <p className="text-white/40 text-xs">{u.phone ?? "No phone"} · {u.alias ?? "No alias"}</p>
                     <p className="text-white/20 text-xs">{new Date(u.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
