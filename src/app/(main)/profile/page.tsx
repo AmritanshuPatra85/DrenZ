@@ -113,7 +113,7 @@ export default function MyProfile() {
         <p className="text-white/30 text-xs font-semibold uppercase tracking-widest">Settings</p>
         {[
           { label: "Edit Profile",        emoji: "✏️" },
-          { label: "Payout Settings",     emoji: "💳" },
+           { label: "Payout Settings", emoji: "💳", href: "/payout-settings" },
           { label: "Notifications",       emoji: "🔔" },
         ].map(item => (
           <button key={item.label} className="w-full bg-brand-card border border-white/10 rounded-2xl px-4 py-4 flex items-center justify-between">

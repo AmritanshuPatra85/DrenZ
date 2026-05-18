@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card } from "@/components/ui/card"
@@ -10,9 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import { createClient } from "@/lib/supabase/client"
 
 type CheckoutPageProps = {
-  params: {
-    listingId: string
-  }
+  params: { listingId: string }
 }
 
 type ListingSummary = {
@@ -25,10 +22,9 @@ type ListingSummary = {
 
 type CreateOrderResponse = {
   order_id?: string
-  key?: string
+  razorpay_key?: string
   amount?: number
   currency?: string
-  transactionId?: string
   error?: string
 }
 
@@ -39,11 +35,7 @@ type RazorpaySuccessResponse = {
 }
 
 type RazorpayFailureResponse = {
-  error?: {
-    code?: string
-    description?: string
-    reason?: string
-  }
+  error?: { code?: string; description?: string; reason?: string }
 }
 
 type RazorpayInstance = {
@@ -59,12 +51,8 @@ type RazorpayOptions = {
   name: string
   description: string
   handler: (response: RazorpaySuccessResponse) => void
-  modal?: {
-    ondismiss?: () => void
-  }
-  theme?: {
-    color?: string
-  }
+  modal?: { ondismiss?: () => void }
+  theme?: { color?: string }
 }
 
 declare global {
@@ -74,14 +62,9 @@ declare global {
 }
 
 const PROTECTION_FEE = 10
-
-const formatINR = (amount: number) => `Rs.${new Intl.NumberFormat("en-IN").format(amount)}`
-
-const getReadableRazorpayError = (response: RazorpayFailureResponse) => {
-  const detail =
-    response.error?.description ?? response.error?.reason ?? response.error?.code
-  return detail ?? "Payment failed. Please try again."
-}
+const formatINR = (amount: number) => `₹${new Intl.NumberFormat("en-IN").format(amount)}`
+const getReadableRazorpayError = (response: RazorpayFailureResponse) =>
+  response.error?.description ?? response.error?.reason ?? response.error?.code ?? "Payment failed. Please try again."
 
 export default function CheckoutPage({ params }: CheckoutPageProps) {
   const { listingId } = params
@@ -89,25 +72,24 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
   const supabase = useMemo(() => createClient(), [])
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const [listing, setListing] = useState<ListingSummary | null>(null)
+  const [listing, setListing]               = useState<ListingSummary | null>(null)
   const [loadingListing, setLoadingListing] = useState(true)
   const [buyerProtection, setBuyerProtection] = useState(false)
-  const [termsAccepted, setTermsAccepted] = useState(false)
-  const [isPaying, setIsPaying] = useState(false)
-  const [paymentError, setPaymentError] = useState<string | null>(null)
-  const [listingError, setListingError] = useState<string | null>(null)
-  const [animateTotal, setAnimateTotal] = useState(false)
-  const [showConfetti, setShowConfetti] = useState(false)
+  const [termsAccepted, setTermsAccepted]   = useState(false)
+  const [isPaying, setIsPaying]             = useState(false)
+  const [paymentError, setPaymentError]     = useState<string | null>(null)
+  const [listingError, setListingError]     = useState<string | null>(null)
+  const [animateTotal, setAnimateTotal]     = useState(false)
+  const [showConfetti, setShowConfetti]     = useState(false)
 
   const protectionFee = buyerProtection ? PROTECTION_FEE : 0
-  const itemPrice = listing?.price ?? 0
-  const totalPrice = itemPrice + protectionFee
+  const itemPrice     = listing?.price ?? 0
+  const totalPrice    = itemPrice + protectionFee
 
   useEffect(() => {
     const loadListing = async () => {
       setLoadingListing(true)
       setListingError(null)
-
       const { data, error } = await supabase
         .from("listings")
         .select("id, title, price, images, seller:users!listings_seller_id_fkey(alias)")
@@ -115,14 +97,12 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         .maybeSingle()
 
       if (error || !data) {
-        setListing(null)
         setListingError("Could not load listing details.")
         setLoadingListing(false)
         return
       }
 
       const seller = Array.isArray(data.seller) ? data.seller[0] : data.seller
-
       setListing({
         id: data.id,
         title: data.title,
@@ -132,7 +112,6 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
       })
       setLoadingListing(false)
     }
-
     void loadListing()
   }, [listingId, supabase])
 
@@ -144,33 +123,22 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
 
   useEffect(() => {
     return () => {
-      if (redirectTimeoutRef.current) {
-        clearTimeout(redirectTimeoutRef.current)
-      }
+      if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current)
     }
   }, [])
 
   const ensureRazorpayScript = useCallback(async (): Promise<boolean> => {
-    if (typeof window === "undefined") {
-      return false
-    }
-
-    if (window.Razorpay) {
-      return true
-    }
-
-    return await new Promise((resolve) => {
-      const existingScript = document.querySelector<HTMLScriptElement>(
+    if (typeof window === "undefined") return false
+    if (window.Razorpay) return true
+    return new Promise((resolve) => {
+      const existing = document.querySelector<HTMLScriptElement>(
         'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
       )
-
-      if (existingScript) {
-        const waitForExisting = () => resolve(Boolean(window.Razorpay))
-        existingScript.addEventListener("load", waitForExisting, { once: true })
-        existingScript.addEventListener("error", () => resolve(false), { once: true })
+      if (existing) {
+        existing.addEventListener("load", () => resolve(Boolean(window.Razorpay)), { once: true })
+        existing.addEventListener("error", () => resolve(false), { once: true })
         return
       }
-
       const script = document.createElement("script")
       script.src = "https://checkout.razorpay.com/v1/checkout.js"
       script.async = true
@@ -180,34 +148,26 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
     })
   }, [])
 
-  const handlePaymentSuccess = useCallback(
-    (transactionId: string) => {
-      setShowConfetti(true)
-      setPaymentError(null)
-      redirectTimeoutRef.current = setTimeout(() => {
-        router.push(`/pre-meetup/${transactionId}`)
-      }, 1300)
-    },
-    [router]
-  )
+  const handlePaymentSuccess = useCallback(() => {
+    setShowConfetti(true)
+    setPaymentError(null)
+    redirectTimeoutRef.current = setTimeout(() => {
+      router.push("/home")
+    }, 1300)
+  }, [router])
 
   const handlePayNow = async () => {
-    if (!listing || !termsAccepted || isPaying) {
-      return
-    }
-
+    if (!listing || !termsAccepted || isPaying) return
     setIsPaying(true)
     setPaymentError(null)
 
     try {
       const orderResponse = await fetch("/api/checkout/create-order", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          listingId,
-          buyerProtection,
+          listing_id: listingId,
+          use_buyer_protection: buyerProtection,
         }),
       })
 
@@ -219,13 +179,13 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
       }
 
       const orderId = orderResult.order_id
-      const key = orderResult.key
-      const transactionId = orderResult.transactionId
+      const key     = orderResult.razorpay_key
 
-      if (!orderId || !key || !transactionId) {
+      if (!orderId || !key) {
         setPaymentError("Payment setup is incomplete. Please try again.")
         return
       }
+      const transactionId = orderResult.transactionId ?? orderResult.order_id
 
       const scriptLoaded = await ensureRazorpayScript()
       if (!scriptLoaded || !window.Razorpay) {
@@ -241,16 +201,10 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         name: "drenZ",
         description: listing.title,
         handler: () => {
-          handlePaymentSuccess(transactionId)
+          handlePaymentSuccess()
         },
-        modal: {
-          ondismiss: () => {
-            setIsPaying(false)
-          },
-        },
-        theme: {
-          color: "#F5A623",
-        },
+        modal: { ondismiss: () => setIsPaying(false) },
+        theme: { color: "#F5A623" },
       })
 
       razorpay.on("payment.failed", (failureResponse) => {
@@ -269,8 +223,11 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
   return (
     <main className="min-h-screen bg-brand-dark px-3 pb-8 pt-5 text-white sm:px-4">
       <div className="mx-auto w-full max-w-2xl">
-        <h1 className="text-xl font-bold">Checkout</h1>
-        <p className="mt-1 text-sm text-white/70">Secure your item and complete payment safely.</p>
+
+        <div className="flex items-center gap-3 mb-5">
+          <button onClick={() => router.back()} className="text-white/50 text-sm">← Back</button>
+          <h1 className="text-xl font-bold flex-1">Checkout</h1>
+        </div>
 
         <Card className="mt-4 border-white/10 bg-brand-card p-3 sm:p-4">
           {loadingListing ? (
@@ -281,12 +238,7 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
             <div className="flex items-start gap-3">
               <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-black/20">
                 {listing.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={listing.imageUrl}
-                    alt={listing.title}
-                    className="h-full w-full object-cover"
-                  />
+                  <img src={listing.imageUrl} alt={listing.title} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-[11px] text-white/60">
                     No image
@@ -331,11 +283,9 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
               </span>
             </div>
             <div className="h-px bg-white/10" />
-            <div
-              className={`flex items-center justify-between text-base font-bold transition-all duration-300 ${
-                animateTotal ? "scale-[1.02] text-brand-yellow" : "text-white"
-              }`}
-            >
+            <div className={`flex items-center justify-between text-base font-bold transition-all duration-300 ${
+              animateTotal ? "scale-[1.02] text-brand-yellow" : "text-white"
+            }`}>
               <span>Total</span>
               <span>{formatINR(totalPrice)}</span>
             </div>
@@ -356,11 +306,11 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
           </label>
         </Card>
 
-        {paymentError ? (
+        {paymentError && (
           <p className="mt-3 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
             {paymentError}
           </p>
-        ) : null}
+        )}
 
         <Button
           type="button"
@@ -372,41 +322,24 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         </Button>
       </div>
 
-      {showConfetti ? (
+      {showConfetti && (
         <div aria-hidden className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
           {Array.from({ length: 32 }).map((_, index) => (
             <span
-              // eslint-disable-next-line react/no-array-index-key
               key={index}
-              className="absolute h-2 w-2 rounded-sm bg-brand-yellow confetti-piece"
+              className="absolute h-2 w-2 rounded-sm bg-brand-yellow"
               style={{
                 left: `${(index % 8) * 12 + 6}%`,
                 top: "-10px",
                 animationDelay: `${(index % 7) * 80}ms`,
                 animationDuration: `${1800 + (index % 5) * 180}ms`,
                 opacity: 0.95,
+                animation: "confetti-fall ease-out forwards",
               }}
             />
           ))}
         </div>
-      ) : null}
-
-      <style jsx>{`
-        .confetti-piece {
-          animation-name: confetti-fall;
-          animation-timing-function: ease-out;
-          animation-fill-mode: forwards;
-        }
-
-        @keyframes confetti-fall {
-          0% {
-            transform: translate3d(0, 0, 0) rotate(0deg);
-          }
-          100% {
-            transform: translate3d(-20px, 110vh, 0) rotate(540deg);
-          }
-        }
-      `}</style>
+      )}
     </main>
   )
 }

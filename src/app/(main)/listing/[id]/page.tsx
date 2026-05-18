@@ -105,10 +105,10 @@ export default function ListingDetailPage() {
 
   if (!listing) return null;
 
-  const isOwner    = currentUser?.id === listing.seller_id;
-  const catStyle   = CATEGORY_STYLES[listing.category] ?? DEFAULT_STYLE;
-  const condStyle  = CONDITION_STYLES[listing.condition] ?? { bg: "bg-white/10", text: "text-white/50" };
-  const images = listing.image_urls ?? (listing.image_url ? [listing.image_url] : []);
+  const isOwner   = currentUser?.id === listing.seller_id;
+  const catStyle  = CATEGORY_STYLES[listing.category] ?? DEFAULT_STYLE;
+  const condStyle = CONDITION_STYLES[listing.condition] ?? { bg: "bg-white/10", text: "text-white/50" };
+  const images    = listing.image_urls ?? (listing.image_url ? [listing.image_url] : []);
 
   return (
     <main className="min-h-screen bg-brand-dark text-white pb-32">
@@ -238,7 +238,7 @@ export default function ListingDetailPage() {
               💬 Message
             </button>
             <button
-              onClick={handleMessage}
+              onClick={() => router.push(`/checkout/${listing.id}`)}
               className="flex-1 bg-brand-yellow text-black font-black py-4 rounded-2xl text-sm"
             >
               Buy Now ₹{listing.price}

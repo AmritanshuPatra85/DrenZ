@@ -14,6 +14,7 @@ export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const [data, setData] = useState<any[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
+  const [stats, setStats] = useState({ users: 0, listings: 0, transactions: 0, disputes: 0 });
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,12 +24,10 @@ export default function AdminPage() {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || user.email !== ADMIN_EMAIL) {
-        router.push("/");
-        return;
-      }
+      if (!user || user.email !== ADMIN_EMAIL) { router.push("/"); return; }
       setAuthorized(true);
       setLoading(false);
+      loadStats();
     };
     checkAuth();
   }, []);
@@ -37,6 +36,21 @@ export default function AdminPage() {
     if (!authorized) return;
     loadData();
   }, [tab, authorized]);
+
+  const loadStats = async () => {
+    const [u, l, t, d] = await Promise.all([
+      supabase.from("users").select("*", { count: "exact", head: true }),
+      supabase.from("listings").select("*", { count: "exact", head: true }),
+      supabase.from("transactions").select("*", { count: "exact", head: true }),
+      supabase.from("disputes").select("*", { count: "exact", head: true }),
+    ]);
+    setStats({
+      users: u.count ?? 0,
+      listings: l.count ?? 0,
+      transactions: t.count ?? 0,
+      disputes: d.count ?? 0,
+    });
+  };
 
   const loadData = async () => {
     setDataLoading(true);
@@ -78,12 +92,41 @@ export default function AdminPage() {
   const toggleBan = async (userId: string, isBanned: boolean) => {
     await supabase.from("users").update({ is_banned: !isBanned }).eq("id", userId);
     loadData();
+    loadStats();
   };
 
   const removeListing = async (listingId: string) => {
     if (!confirm("Remove this listing?")) return;
     await supabase.from("listings").update({ status: "removed" }).eq("id", listingId);
     loadData();
+    loadStats();
+  };
+
+  const downloadCSV = (filename: string, rows: any[]) => {
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]).join(",");
+    const csv = [headers, ...rows.map(r =>
+      Object.values(r).map(v =>
+        typeof v === "object" ? JSON.stringify(v) : String(v ?? "")
+      ).join(",")
+    )].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadJSON = (filename: string, rows: any[]) => {
+    const blob = new Blob([JSON.stringify(rows, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (loading) return (
@@ -98,6 +141,7 @@ export default function AdminPage() {
     <main className="min-h-screen bg-gray-950 text-white">
       <div className="max-w-5xl mx-auto px-4 py-6">
 
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-black text-brand-yellow">drenZ Admin</h1>
@@ -111,16 +155,50 @@ export default function AdminPage() {
           </button>
         </div>
 
-        <div className="flex gap-2 mb-6 overflow-x-auto">
-          {TABS.map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors ${
-                tab === t ? "bg-brand-yellow text-black" : "bg-white/10 text-white/60"
-              }`}
-            >{t}</button>
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-3 mb-6">
+          {[
+            { label: "Users", value: stats.users, emoji: "👥" },
+            { label: "Listings", value: stats.listings, emoji: "👗" },
+            { label: "Transactions", value: stats.transactions, emoji: "💳" },
+            { label: "Disputes", value: stats.disputes, emoji: "⚠️" },
+          ].map(s => (
+            <div key={s.label} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+              <p className="text-2xl mb-1">{s.emoji}</p>
+              <p className="text-2xl font-black text-brand-yellow">{s.value}</p>
+              <p className="text-white/40 text-xs">{s.label}</p>
+            </div>
           ))}
         </div>
 
+        {/* Tabs + Download */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex gap-2 overflow-x-auto">
+            {TABS.map(t => (
+              <button key={t} onClick={() => setTab(t)}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors ${
+                  tab === t ? "bg-brand-yellow text-black" : "bg-white/10 text-white/60"
+                }`}
+              >{t}</button>
+            ))}
+          </div>
+          <div className="flex gap-2 shrink-0 ml-3">
+            <button
+              onClick={() => downloadCSV(`drenz-${tab.toLowerCase()}.csv`, data)}
+              className="bg-white/10 text-white/60 text-xs font-semibold px-3 py-2 rounded-xl hover:bg-white/20"
+            >
+              ⬇ CSV
+            </button>
+            <button
+              onClick={() => downloadJSON(`drenz-${tab.toLowerCase()}.json`, data)}
+              className="bg-white/10 text-white/60 text-xs font-semibold px-3 py-2 rounded-xl hover:bg-white/20"
+            >
+              ⬇ JSON
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
         {dataLoading ? (
           <p className="text-white/30 text-sm">Loading…</p>
         ) : data.length === 0 ? (
