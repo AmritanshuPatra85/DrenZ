@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-
 import { createClient } from "@/lib/supabase/server";
 
 const patchSchema = z
@@ -19,9 +18,7 @@ const patchSchema = z
 
 export async function GET() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -42,9 +39,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -73,9 +68,14 @@ export async function PATCH(request: Request) {
     .single();
 
   if (error) {
+    if (error.code === "23505" && error.message.includes("alias")) {
+      return NextResponse.json(
+        { error: "This alias is already taken. Please pick a different one." },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
   }
 
   return NextResponse.json({ profile: updated });
 }
-
