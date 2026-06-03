@@ -28,13 +28,13 @@ function SellForm() {
   const editId = searchParams.get("edit");
   const isEdit = !!editId;
 
-  const [submitting,      setSubmitting]      = useState(false);
-  const [submitted,       setSubmitted]       = useState(false);
-  const [uploading,       setUploading]       = useState(false);
-  const [loading,         setLoading]         = useState(isEdit);
-  const [images,          setImages]          = useState<File[]>([]);
-  const [previews,        setPreviews]        = useState<string[]>([]);
-  const [existingImages,  setExistingImages]  = useState<string[]>([]);
+  const [submitting,     setSubmitting]     = useState(false);
+  const [submitted,      setSubmitted]      = useState(false);
+  const [uploading,      setUploading]      = useState(false);
+  const [loading,        setLoading]        = useState(isEdit);
+  const [images,         setImages]         = useState<File[]>([]);
+  const [previews,       setPreviews]       = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [form, setForm] = useState({
     title: "", category: "", condition: "", size: "", brand: "", price: "", description: "",
   });
@@ -83,8 +83,14 @@ function SellForm() {
     setUploading(true);
     const newImageUrls: string[] = [];
     for (const file of images) {
-      const url = await uploadListingImage(file, user.id);
-      if (url) newImageUrls.push(url);
+      const result = await uploadListingImage(file, user.id);
+      if (result.blocked) {
+        setUploading(false);
+        setSubmitting(false);
+        alert("One of your images was flagged as inappropriate and could not be uploaded.");
+        return;
+      }
+      if (result.url) newImageUrls.push(result.url);
     }
     setUploading(false);
 
