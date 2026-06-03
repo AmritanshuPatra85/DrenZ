@@ -138,25 +138,56 @@ export default function ListingDetailPage() {
         className="w-full h-72 flex items-center justify-center relative"
         style={{ background: catStyle.bg }}
       >
-        {images.length > 0 ? (
-          <>
-            <img
-              src={images[imgIndex]}
-              alt={listing.title}
-              className="w-full h-full object-cover"
-            />
-            {images.length > 1 && (
-              <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
-                {images.map((_: any, i: number) => (
-                  <button
-                    key={i}
-                    onClick={() => setImgIndex(i)}
-                    className={`w-1.5 h-1.5 rounded-full transition-colors ${i === imgIndex ? "bg-brand-yellow" : "bg-white/30"}`}
-                  />
-                ))}
-              </div>
-            )}
-          </>
+{images.length > 0 ? (
+  <>
+    <div
+      className="w-full h-full relative overflow-hidden"
+      onTouchStart={(e) => {
+        const touch = e.touches[0];
+        (e.currentTarget as any)._touchStartX = touch.clientX;
+      }}
+      onTouchEnd={(e) => {
+        const startX = (e.currentTarget as any)._touchStartX;
+        const endX = e.changedTouches[0].clientX;
+        const diff = startX - endX;
+        if (Math.abs(diff) > 50) {
+          if (diff > 0 && imgIndex < images.length - 1) setImgIndex(imgIndex + 1);
+          if (diff < 0 && imgIndex > 0) setImgIndex(imgIndex - 1);
+        }
+      }}
+    >
+      <img
+        src={images[imgIndex]}
+        alt={listing.title}
+        className="w-full h-full object-cover"
+      />
+      {images.length > 1 && (
+        <>
+          {imgIndex > 0 && (
+            <button
+              onClick={() => setImgIndex(imgIndex - 1)}
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center text-white"
+            >‹</button>
+          )}
+          {imgIndex < images.length - 1 && (
+            <button
+              onClick={() => setImgIndex(imgIndex + 1)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center text-white"
+            >›</button>
+          )}
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+            {images.map((_: any, i: number) => (
+              <button
+                key={i}
+                onClick={() => setImgIndex(i)}
+                className={`w-1.5 h-1.5 rounded-full transition-colors ${i === imgIndex ? "bg-brand-yellow" : "bg-white/30"}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  </>
         ) : (
           <span className="text-7xl">{catStyle.emoji}</span>
         )}
