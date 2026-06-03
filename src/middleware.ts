@@ -92,23 +92,15 @@ export async function middleware(request: NextRequest) {
     return redirectResponse;
   }
 
-  const onboardingWhatsapp = pathname.startsWith("/onboarding/whatsapp") || pathname === "/verify-whatsapp";
-  const onboardingAlias = pathname.startsWith("/onboarding/alias") || pathname.startsWith("/alias-picker");
+const onboardingAlias = pathname.startsWith("/onboarding/alias") || pathname.startsWith("/alias-picker");
 
-  // No phone — send to whatsapp verification (but don't redirect if already there)
-  if ((!profile || !profile.phone) && !onboardingWhatsapp) {
-    return NextResponse.redirect(new URL("/onboarding/whatsapp", request.url));
-  }
+if (!profile?.alias && !onboardingAlias) {
+  return NextResponse.redirect(new URL("/onboarding/alias", request.url));
+}
 
-  // Has phone but no alias — send to alias picker (but don't redirect if already there)
-  if (profile?.phone && !profile.alias && !onboardingAlias && !onboardingWhatsapp) {
-    return NextResponse.redirect(new URL("/onboarding/alias", request.url));
-  }
-
-  // Fully onboarded but on onboarding page — send to home
-  if (profile?.phone && profile?.alias && isOnboarding) {
-    return NextResponse.redirect(new URL("/home", request.url));
-  }
+if (profile?.alias && isOnboarding) {
+  return NextResponse.redirect(new URL("/home", request.url));
+}
 
   return supabaseResponse;
 }

@@ -58,19 +58,11 @@ export async function GET(request: NextRequest) {
   // Regular user — check onboarding status
   const { data: existingUser } = await supabase
     .from("users")
-    .select("id, phone, alias")
+    .select("id, alias")
     .eq("id", data.user.id)
     .single();
 
-  if (!existingUser || !existingUser.phone) {
-    const r = NextResponse.redirect(`${origin}/onboarding/whatsapp`);
-    response.cookies.getAll().forEach(({ name, value }) => {
-      r.cookies.set(name, value);
-    });
-    return r;
-  }
-
-  if (!existingUser.alias) {
+  if (!existingUser || !existingUser.alias) {
     const r = NextResponse.redirect(`${origin}/onboarding/alias`);
     response.cookies.getAll().forEach(({ name, value }) => {
       r.cookies.set(name, value);
