@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import ListingCard from "@/components/ListingCard";
 import BottomNav from "@/components/BottomNav";
+import NotificationBell from "@/components/NotificationBell";
 
 const CATEGORIES = ["All", "Tops", "Bottoms", "Shoes", "Bags", "Accessories"];
 
@@ -80,7 +81,7 @@ export default function HomeFeed() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-6 pb-3">
         <h1 className="text-brand-yellow font-black text-2xl tracking-widest uppercase">drenZ</h1>
-        <button className="text-white/50 text-xl">🔔</button>
+       <NotificationBell />
       </div>
 
       {/* Category pills */}

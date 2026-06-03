@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const ADMIN_EMAIL = "amritanshupatra01@gmail.com";
+const ADMIN_EMAILS = ["amritanshupatra01@gmail.com", "rsrs5012@gmail.com"];
 
 const protectedRoutes = [
   "/home",
@@ -60,7 +60,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Admin bypasses all onboarding checks
-  if (user.email === ADMIN_EMAIL) {
+  if (ADMIN_EMAILS.includes(user.email ?? "")) {
     if (isOnboarding) {
       return NextResponse.redirect(new URL("/admin", request.url));
     }

@@ -5,7 +5,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 
-const ADMIN_EMAIL = "amritanshupatra01@gmail.com";
+const ADMIN_EMAILS = ["amritanshupatra01@gmail.com", "rsrs5012@gmail.com"];
 const TABS = ["Users", "Listings", "Transactions", "Disputes"];
 
 export default function AdminPage() {
@@ -15,7 +15,7 @@ export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const [data, setData] = useState<any[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
-  const [stats, setStats] = useState({ users: 0, listings: 0, transactions: 0, disputes: 0 });
+  const [stats, setStats] = useState({ users: 0, listings: 0, transactions: 0, disputes: 0, revenue: 0 });
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,7 +25,7 @@ export default function AdminPage() {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || user.email !== ADMIN_EMAIL) { router.push("/"); return; }
+      if (!user || !ADMIN_EMAILS.includes(user.email ?? "")) { router.push("/"); return; }
       setAuthorized(true);
       setLoading(false);
       loadStats();
@@ -39,17 +39,24 @@ export default function AdminPage() {
   }, [tab, authorized]);
 
   const loadStats = async () => {
-    const [u, l, t, d] = await Promise.all([
+    const [u, l, t, d, tAmount] = await Promise.all([
       supabase.from("admin_users").select("*", { count: "exact", head: true }),
       supabase.from("listings").select("*", { count: "exact", head: true }),
       supabase.from("transactions").select("*", { count: "exact", head: true }),
       supabase.from("disputes").select("*", { count: "exact", head: true }),
+      supabase.from("transactions").select("amount").eq("status", "completed"),
     ]);
+
+    const totalRevenue = (tAmount.data ?? []).reduce(
+      (sum: number, tr: any) => sum + (tr.amount / 100),
+      0
+    );
     setStats({
       users: u.count ?? 0,
       listings: l.count ?? 0,
       transactions: t.count ?? 0,
       disputes: d.count ?? 0,
+      revenue: totalRevenue,
     });
   };
 
@@ -134,7 +141,7 @@ export default function AdminPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-black text-brand-yellow">drenZ Admin</h1>
-            <p className="text-white/40 text-sm">Logged in as {ADMIN_EMAIL}</p>
+            <p className="text-white/40 text-sm">Logged in as {ADMIN_EMAILS.join(", ")}</p>
           </div>
           <button
             onClick={() => { supabase.auth.signOut(); router.push("/"); }}
@@ -145,12 +152,13 @@ export default function AdminPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-5 gap-3 mb-6">
           {[
             { label: "KIIT Users", value: stats.users, emoji: "👥" },
             { label: "Listings", value: stats.listings, emoji: "👗" },
             { label: "Transactions", value: stats.transactions, emoji: "💳" },
             { label: "Disputes", value: stats.disputes, emoji: "⚠️" },
+            { label: "Total Revenue", value: `₹${stats.revenue.toLocaleString("en-IN")}`, emoji: "💰" },
           ].map(s => (
             <div key={s.label} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
               <p className="text-2xl mb-1">{s.emoji}</p>
