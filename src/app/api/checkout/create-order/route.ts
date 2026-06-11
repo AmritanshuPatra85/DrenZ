@@ -5,7 +5,8 @@ import { z } from 'zod'
 
 const checkoutSchema = z.object({
   listing_id: z.string().uuid(),
-  use_buyer_protection: z.boolean().default(false),
+  use_delivery: z.boolean().default(false),
+  delivery_address: z.string().nullable().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { listing_id, use_buyer_protection } = parsed.data
+  const { listing_id, use_delivery, delivery_address } = parsed.data
 
   const { data: listing } = await supabase
     .from('listings')
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
 
   const baseAmount = conversation?.agreed_price ?? listing.price
-  const totalAmount = baseAmount + (use_buyer_protection ? 10 : 0)
+  const totalAmount = baseAmount + (use_delivery ? 10 : 0)
   const amountInPaise = totalAmount * 100
 
   try {
@@ -58,6 +59,8 @@ export async function POST(req: NextRequest) {
         listing_id,
         buyer_id: user.id,
         seller_id: listing.seller_id,
+        use_delivery: String(use_delivery),
+        delivery_address: delivery_address ?? 'N/A',
       },
     })
 
@@ -69,7 +72,6 @@ export async function POST(req: NextRequest) {
     })
   } catch (error: any) {
     console.error('Razorpay error message:', error?.message)
-    console.error('Razorpay error description:', error?.error?.description)
     console.error('Razorpay error full:', JSON.stringify(error))
     return NextResponse.json({ error: 'Unable to create payment order' }, { status: 500 })
   }

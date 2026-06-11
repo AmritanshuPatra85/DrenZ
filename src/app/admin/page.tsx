@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 
 const ADMIN_EMAILS = ["amritanshupatra01@gmail.com", "rsrs5012@gmail.com"];
-const TABS = ["Users", "Listings", "Transactions", "Disputes"];
+const TABS = ["Users", "Listings", "Transactions", "Disputes", "Deliveries"];
 
 export default function AdminPage() {
   const router = useRouter();
@@ -48,8 +48,7 @@ export default function AdminPage() {
     ]);
 
     const totalRevenue = (tAmount.data ?? []).reduce(
-      (sum: number, tr: any) => sum + (tr.amount / 100),
-      0
+      (sum: number, tr: any) => sum + (tr.amount / 100), 0
     );
     setStats({
       users: u.count ?? 0,
@@ -88,6 +87,14 @@ export default function AdminPage() {
       const { data } = await supabase
         .from("disputes")
         .select("id, status, created_at, transaction:transactions(amount)")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      result = data ?? [];
+    } else if (tab === "Deliveries") {
+      const { data } = await supabase
+        .from("transactions")
+        .select("id, amount, status, created_at, delivery_address, listing:listings(title), buyer:users!transactions_buyer_id_fkey(alias)")
+        .eq("use_delivery", true)
         .order("created_at", { ascending: false })
         .limit(50);
       result = data ?? [];
@@ -137,7 +144,6 @@ export default function AdminPage() {
     <main className="min-h-screen bg-gray-950 text-white">
       <div className="max-w-5xl mx-auto px-4 py-6">
 
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-black text-brand-yellow">drenZ Admin</h1>
@@ -151,7 +157,6 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-5 gap-3 mb-6">
           {[
             { label: "KIIT Users", value: stats.users, emoji: "👥" },
@@ -168,7 +173,6 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {/* Tabs + Download */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-2 overflow-x-auto">
             {TABS.map(t => (
@@ -187,7 +191,6 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Content */}
         {dataLoading ? (
           <p className="text-white/30 text-sm">Loading…</p>
         ) : data.length === 0 ? (
@@ -248,6 +251,23 @@ export default function AdminPage() {
                 <p className="text-white font-semibold text-sm">Dispute #{d.id.slice(0, 8)}</p>
                 <p className="text-white/40 text-xs">Status: {d.status}</p>
                 <p className="text-white/20 text-xs">{new Date(d.created_at).toLocaleDateString()}</p>
+              </div>
+            ))}
+
+            {tab === "Deliveries" && data.map((d: any) => (
+              <div key={d.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-white font-semibold text-sm">{d.listing?.title ?? "Unknown listing"}</p>
+                  <p className="text-white/40 text-xs">Buyer: {d.buyer?.alias ?? "unknown"}</p>
+                  <p className="text-brand-yellow text-xs font-semibold mt-1">📦 {d.delivery_address ?? "No address provided"}</p>
+                  <p className="text-white/40 text-xs">₹{d.amount / 100} · {d.status}</p>
+                  <p className="text-white/20 text-xs">{new Date(d.created_at).toLocaleDateString()}</p>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 ${
+                  d.status === "completed" ? "bg-green-900 text-green-400" : "bg-yellow-900 text-yellow-400"
+                }`}>
+                  {d.status === "completed" ? "Delivered" : "Pending"}
+                </span>
               </div>
             ))}
 

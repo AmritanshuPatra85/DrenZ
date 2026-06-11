@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -6,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
 import { createClient } from "@/lib/supabase/client"
 
 type CheckoutPageProps = {
@@ -61,6 +61,7 @@ declare global {
   }
 }
 
+const DELIVERY_FEE = 10
 const formatINR = (amount: number) => `₹${new Intl.NumberFormat("en-IN").format(amount)}`
 const getReadableRazorpayError = (response: RazorpayFailureResponse) =>
   response.error?.description ?? response.error?.reason ?? response.error?.code ?? "Payment failed. Please try again."
@@ -73,13 +74,18 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
 
   const [listing, setListing]               = useState<ListingSummary | null>(null)
   const [loadingListing, setLoadingListing] = useState(true)
+  const [useDelivery, setUseDelivery]       = useState(false)
+  const [deliveryAddress, setDeliveryAddress] = useState("")
   const [termsAccepted, setTermsAccepted]   = useState(false)
   const [isPaying, setIsPaying]             = useState(false)
   const [paymentError, setPaymentError]     = useState<string | null>(null)
   const [listingError, setListingError]     = useState<string | null>(null)
+  const [animateTotal, setAnimateTotal]     = useState(false)
   const [showConfetti, setShowConfetti]     = useState(false)
 
-  const totalPrice = listing?.price ?? 0
+  const deliveryFee = useDelivery ? DELIVERY_FEE : 0
+  const itemPrice   = listing?.price ?? 0
+  const totalPrice  = itemPrice + deliveryFee
 
   useEffect(() => {
     const loadListing = async () => {
@@ -109,6 +115,12 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
     }
     void loadListing()
   }, [listingId, supabase])
+
+  useEffect(() => {
+    setAnimateTotal(true)
+    const timer = setTimeout(() => setAnimateTotal(false), 280)
+    return () => clearTimeout(timer)
+  }, [useDelivery])
 
   useEffect(() => {
     return () => {
@@ -147,6 +159,11 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
 
   const handlePayNow = async () => {
     if (!listing || !termsAccepted || isPaying) return
+    if (useDelivery && !deliveryAddress.trim()) {
+      setPaymentError("Please enter your delivery address.")
+      return
+    }
+
     setIsPaying(true)
     setPaymentError(null)
 
@@ -156,7 +173,8 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           listing_id: listingId,
-          use_buyer_protection: false,
+          use_delivery: useDelivery,
+          delivery_address: useDelivery ? deliveryAddress.trim() : null,
         }),
       })
 
@@ -188,9 +206,7 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         currency: orderResult.currency ?? "INR",
         name: "drenZ",
         description: listing.title,
-        handler: () => {
-          handlePaymentSuccess()
-        },
+        handler: () => { handlePaymentSuccess() },
         modal: { ondismiss: () => setIsPaying(false) },
         theme: { color: "#F5A623" },
       })
@@ -243,14 +259,54 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         </Card>
 
         <Card className="mt-3 border-white/10 bg-brand-card p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-white">Campus Delivery</p>
+              <p className="text-xs text-white/60">drenZ delivers to your hostel (+{formatINR(DELIVERY_FEE)}).</p>
+            </div>
+            <Switch
+              checked={useDelivery}
+              onCheckedChange={(val) => {
+                setUseDelivery(val)
+                if (!val) setDeliveryAddress("")
+              }}
+              aria-label="Toggle delivery"
+              className="data-[state=checked]:bg-brand-yellow"
+            />
+          </div>
+
+          {useDelivery && (
+            <div className="mt-3">
+              <input
+                type="text"
+                placeholder="Hostel block & room no. (e.g. HS-4, Room 210)"
+                value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
+                className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-yellow"
+              />
+            </div>
+          )}
+        </Card>
+
+        <Card className="mt-3 border-white/10 bg-brand-card p-3 sm:p-4">
           <h2 className="text-sm font-semibold text-white">Price breakdown</h2>
           <div className="mt-3 space-y-2 text-sm">
             <div className="flex items-center justify-between text-white/85">
               <span>Item price</span>
-              <span>{formatINR(totalPrice)}</span>
+              <span>{formatINR(itemPrice)}</span>
             </div>
+            {useDelivery && (
+              <div className="flex items-center justify-between text-white/85">
+                <span>Campus delivery</span>
+                <span className={`transition-all duration-300 ${animateTotal ? "scale-105 text-brand-yellow" : ""}`}>
+                  {formatINR(deliveryFee)}
+                </span>
+              </div>
+            )}
             <div className="h-px bg-white/10" />
-            <div className="flex items-center justify-between text-base font-bold text-white">
+            <div className={`flex items-center justify-between text-base font-bold transition-all duration-300 ${
+              animateTotal ? "scale-[1.02] text-brand-yellow" : "text-white"
+            }`}>
               <span>Total</span>
               <span>{formatINR(totalPrice)}</span>
             </div>
