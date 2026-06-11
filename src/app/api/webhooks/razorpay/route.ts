@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
-import { wati } from '@/lib/wati'
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()
@@ -82,40 +81,70 @@ export async function POST(req: NextRequest) {
     .eq('listing_id', listingId)
     .eq('buyer_id', buyerId)
 
-  const { data: buyer } = await supabase
-    .from('profiles')
-    .select('phone, alias')
-    .eq('id', buyerId)
-    .single()
-
-  const { data: seller } = await supabase
-    .from('profiles')
-    .select('phone, alias')
-    .eq('id', sellerId)
-    .single()
-
   const { data: listing } = await supabase
     .from('listings')
     .select('title')
     .eq('id', listingId)
     .single()
 
-  if (buyer?.phone) {
-    await wati.sendHandoffReminderBuyer(
-      buyer.phone,
-      buyer.alias,
-      listing?.title ?? 'your item',
-      code
-    )
+  const listingTitle = listing?.title ?? 'your item'
+
+  const { data: buyerData } = await supabase
+    .from('users')
+    .select('fcm_token')
+    .eq('id', buyerId)
+    .single()
+
+  const { data: sellerData } = await supabase
+    .from('users')
+    .select('fcm_token')
+    .eq('id', sellerId)
+    .single()
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL!
+
+  // Insert in-app notifications
+  await supabase.from('notifications').insert({
+    user_id: buyerId,
+    type: 'payment_success',
+    title: 'Payment Successful!',
+    body: `You've paid for "${listingTitle}". Meet the seller to complete the handoff.`,
+    data: { listing_id: listingId, razorpay_order_id: razorpayOrderId },
+  })
+
+  await supabase.from('notifications').insert({
+    user_id: sellerId,
+    type: 'payment_received',
+    title: 'Payment Received!',
+    body: `Someone paid for "${listingTitle}". Arrange a meetup to hand it off.`,
+    data: { listing_id: listingId, razorpay_order_id: razorpayOrderId },
+  })
+
+  // Send push notifications
+  if (buyerData?.fcm_token) {
+    await fetch(`${baseUrl}/api/send-notification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: buyerData.fcm_token,
+        title: 'Payment Successful!',
+        body: `You've paid for "${listingTitle}". Meet the seller to complete the handoff.`,
+        data: { listing_id: listingId },
+      }),
+    })
   }
 
-  if (seller?.phone) {
-    await wati.sendPaymentConfirmed(
-      seller.phone,
-      seller.alias,
-      `₹${amount / 100}`,
-      listing?.title ?? 'your item'
-    )
+  if (sellerData?.fcm_token) {
+    await fetch(`${baseUrl}/api/send-notification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: sellerData.fcm_token,
+        title: 'Payment Received!',
+        body: `Someone paid for "${listingTitle}". Arrange a meetup to hand it off.`,
+        data: { listing_id: listingId },
+      }),
+    })
   }
 
   return NextResponse.json({ received: true })
