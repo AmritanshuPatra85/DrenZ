@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
 
   const { listing_id, use_buyer_protection } = parsed.data
 
-  // Fetch listing — must be active
   const { data: listing } = await supabase
     .from('listings')
     .select('id, status, seller_id, price, title')
@@ -35,12 +34,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Listing not available' }, { status: 400 })
   }
 
-  // Buyer cannot be the seller
   if (listing.seller_id === user.id) {
     return NextResponse.json({ error: 'Cannot purchase your own listing' }, { status: 403 })
   }
 
-  // Check if there's an accepted offer for this buyer in this conversation
   const { data: conversation } = await supabase
     .from('conversations')
     .select('agreed_price')
@@ -49,28 +46,31 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
 
   const baseAmount = conversation?.agreed_price ?? listing.price
-
-  // Add buyer protection fee if opted in (₹10)
   const totalAmount = baseAmount + (use_buyer_protection ? 10 : 0)
-
-  // Amount in paise for Razorpay
   const amountInPaise = totalAmount * 100
 
-  const order = await razorpay.orders.create({
-    amount: amountInPaise,
-    currency: 'INR',
-    receipt: listing_id,
-    notes: {
-      listing_id,
-      buyer_id: user.id,
-      seller_id: listing.seller_id,
-    },
-  })
+  try {
+    const order = await razorpay.orders.create({
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: listing_id,
+      notes: {
+        listing_id,
+        buyer_id: user.id,
+        seller_id: listing.seller_id,
+      },
+    })
 
-  return NextResponse.json({
-    order_id: order.id,
-    amount: amountInPaise,
-    currency: 'INR',
-    razorpay_key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-  })
-} 
+    return NextResponse.json({
+      order_id: order.id,
+      amount: amountInPaise,
+      currency: 'INR',
+      razorpay_key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+    })
+  } catch (error: any) {
+    console.error('Razorpay error message:', error?.message)
+    console.error('Razorpay error description:', error?.error?.description)
+    console.error('Razorpay error full:', JSON.stringify(error))
+    return NextResponse.json({ error: 'Unable to create payment order' }, { status: 500 })
+  }
+}

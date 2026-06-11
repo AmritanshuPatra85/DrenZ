@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -5,7 +6,6 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
 import { createClient } from "@/lib/supabase/client"
 
 type CheckoutPageProps = {
@@ -61,7 +61,6 @@ declare global {
   }
 }
 
-const PROTECTION_FEE = 10
 const formatINR = (amount: number) => `₹${new Intl.NumberFormat("en-IN").format(amount)}`
 const getReadableRazorpayError = (response: RazorpayFailureResponse) =>
   response.error?.description ?? response.error?.reason ?? response.error?.code ?? "Payment failed. Please try again."
@@ -74,17 +73,13 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
 
   const [listing, setListing]               = useState<ListingSummary | null>(null)
   const [loadingListing, setLoadingListing] = useState(true)
-  const [buyerProtection, setBuyerProtection] = useState(false)
   const [termsAccepted, setTermsAccepted]   = useState(false)
   const [isPaying, setIsPaying]             = useState(false)
   const [paymentError, setPaymentError]     = useState<string | null>(null)
   const [listingError, setListingError]     = useState<string | null>(null)
-  const [animateTotal, setAnimateTotal]     = useState(false)
   const [showConfetti, setShowConfetti]     = useState(false)
 
-  const protectionFee = buyerProtection ? PROTECTION_FEE : 0
-  const itemPrice     = listing?.price ?? 0
-  const totalPrice    = itemPrice + protectionFee
+  const totalPrice = listing?.price ?? 0
 
   useEffect(() => {
     const loadListing = async () => {
@@ -114,12 +109,6 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
     }
     void loadListing()
   }, [listingId, supabase])
-
-  useEffect(() => {
-    setAnimateTotal(true)
-    const timer = setTimeout(() => setAnimateTotal(false), 280)
-    return () => clearTimeout(timer)
-  }, [buyerProtection])
 
   useEffect(() => {
     return () => {
@@ -167,7 +156,7 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           listing_id: listingId,
-          use_buyer_protection: buyerProtection,
+          use_buyer_protection: false,
         }),
       })
 
@@ -185,7 +174,6 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         setPaymentError("Payment setup is incomplete. Please try again.")
         return
       }
-      const transactionId = orderResult.transactionId ?? orderResult.order_id
 
       const scriptLoaded = await ensureRazorpayScript()
       if (!scriptLoaded || !window.Razorpay) {
@@ -255,37 +243,14 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         </Card>
 
         <Card className="mt-3 border-white/10 bg-brand-card p-3 sm:p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-white">Buyer Protection</p>
-              <p className="text-xs text-white/60">Covers payment disputes and support (+{formatINR(PROTECTION_FEE)}).</p>
-            </div>
-            <Switch
-              checked={buyerProtection}
-              onCheckedChange={setBuyerProtection}
-              aria-label="Toggle buyer protection"
-              className="data-[state=checked]:bg-brand-yellow"
-            />
-          </div>
-        </Card>
-
-        <Card className="mt-3 border-white/10 bg-brand-card p-3 sm:p-4">
           <h2 className="text-sm font-semibold text-white">Price breakdown</h2>
           <div className="mt-3 space-y-2 text-sm">
             <div className="flex items-center justify-between text-white/85">
               <span>Item price</span>
-              <span>{formatINR(itemPrice)}</span>
-            </div>
-            <div className="flex items-center justify-between text-white/85">
-              <span>Buyer protection</span>
-              <span className={`transition-all duration-300 ${animateTotal ? "scale-105 text-brand-yellow" : ""}`}>
-                {formatINR(protectionFee)}
-              </span>
+              <span>{formatINR(totalPrice)}</span>
             </div>
             <div className="h-px bg-white/10" />
-            <div className={`flex items-center justify-between text-base font-bold transition-all duration-300 ${
-              animateTotal ? "scale-[1.02] text-brand-yellow" : "text-white"
-            }`}>
+            <div className="flex items-center justify-between text-base font-bold text-white">
               <span>Total</span>
               <span>{formatINR(totalPrice)}</span>
             </div>

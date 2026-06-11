@@ -129,7 +129,17 @@ export default function LandingPage() {
           })}
         </div>
       </div>
-
+    {/* Footer */}
+<div className="px-6 py-8 border-t border-white/10 mt-8">
+  <p className="text-white/30 text-xs text-center mb-3">drenZ · KIIT Campus Only</p>
+  <div className="flex justify-center gap-4 flex-wrap">
+    <a href="/legal#terms" className="text-white/30 text-xs hover:text-white/60">Terms</a>
+    <a href="/legal#privacy" className="text-white/30 text-xs hover:text-white/60">Privacy</a>
+    <a href="/legal#shipping" className="text-white/30 text-xs hover:text-white/60">Shipping</a>
+    <a href="/legal#refunds" className="text-white/30 text-xs hover:text-white/60">Refunds</a>
+    <a href="/legal#contact" className="text-white/30 text-xs hover:text-white/60">Contact</a>
+  </div>
+</div>
       <BottomNav />
     </main>
   );

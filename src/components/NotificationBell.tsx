@@ -30,17 +30,27 @@ export default function NotificationBell() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      supabase
-        .channel(`notifications:${user.id}`)
-        .on("postgres_changes", {
-          event:  "INSERT",
-          schema: "public",
-          table:  "notifications",
-          filter: `user_id=eq.${user.id}`,
-        }, () => {
-          fetchNotifications();
-        })
-        .subscribe();
+const setupRealtime = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const channel = supabase
+    .channel(`notifications:${user.id}`)
+    .on("postgres_changes", {
+      event:  "INSERT",
+      schema: "public",
+      table:  "notifications",
+      filter: `user_id=eq.${user.id}`,
+    }, () => {
+      fetchNotifications();
+    })
+    .subscribe();
+
+  return () => supabase.removeChannel(channel);
+};
+
+const cleanup = setupRealtime();
+return () => { cleanup?.then(fn => fn?.()); };
     };
 
     setupRealtime();

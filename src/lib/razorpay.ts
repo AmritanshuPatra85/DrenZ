@@ -6,7 +6,7 @@ export const razorpay = new Razorpay({
 });
 
 export function calculateFees(price: number) {
-  const platformFee = Math.round(price * 0.05 * 100) / 100; // 5% fee
+  const platformFee = Math.round(price * 0.05 * 100) / 100;
   const sellerPayout = Math.round((price - platformFee) * 100) / 100;
   return { platformFee, sellerPayout };
 }
