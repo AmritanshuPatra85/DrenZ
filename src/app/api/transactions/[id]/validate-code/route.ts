@@ -36,7 +36,6 @@ export async function POST(
   const valid = await bcrypt.compare(code, transaction.handoff_code_hash);
 
   if (!valid) {
-    // Increment attempts
     await supabase
       .from("transactions")
       .update({ code_attempts: transaction.code_attempts + 1 })
@@ -67,6 +66,41 @@ export async function POST(
     .from("listings")
     .update({ status: "sold" })
     .eq("id", transaction.listing_id);
+
+  // Fetch listing title
+  const { data: listing } = await supabase
+    .from("listings")
+    .select("title")
+    .eq("id", transaction.listing_id)
+    .single();
+
+  // Fetch transaction amount
+  const { data: txnDetails } = await supabase
+    .from("transactions")
+    .select("amount")
+    .eq("id", params.id)
+    .single();
+
+  const listingTitle = listing?.title ?? "your item";
+  const amount = txnDetails?.amount ? `₹${txnDetails.amount / 100}` : "your payment";
+
+  // Notify buyer
+  await supabase.from("notifications").insert({
+    user_id: transaction.buyer_id,
+    type: "handoff_complete",
+    title: "Handoff Complete!",
+    body: `You've successfully received "${listingTitle}". Enjoy your purchase!`,
+    data: { transaction_id: params.id },
+  });
+
+  // Notify seller — ask them to send UPI QR
+  await supabase.from("notifications").insert({
+    user_id: transaction.seller_id,
+    type: "payout_pending",
+    title: "Sale Complete — Claim Your Payment!",
+    body: `"${listingTitle}" has been handed off. Send your UPI QR to +91 6372806696 on WhatsApp to receive ${amount}.`,
+    data: { transaction_id: params.id },
+  });
 
   // Broadcast via Realtime
   await supabase.channel(`transaction:${params.id}`).send({
