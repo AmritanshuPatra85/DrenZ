@@ -37,8 +37,17 @@ export default function LandingPage() {
   const [category, setCategory] = useState("All");
   const [installPrompt, setInstallPrompt] = useState<any>(null)
   const [showBanner, setShowBanner] = useState(false)
+  const [showIosBanner, setShowIosBanner] = useState(false)
 
   useEffect(() => {
+    // iOS detection
+    const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase())
+    const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator as any).standalone
+    if (isIos && !isInStandaloneMode) {
+      setShowIosBanner(true)
+    }
+
+    // Android/Chrome handler
     const handler = (e: any) => {
       e.preventDefault()
       setInstallPrompt(e)
@@ -60,7 +69,7 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-brand-dark text-white pb-24">
 
-      {/* PWA Install Banner */}
+      {/* Android PWA Install Banner */}
       {showBanner && (
         <div className="fixed bottom-20 left-4 right-4 bg-brand-yellow text-black rounded-2xl p-4 flex items-center justify-between z-50 shadow-xl">
           <div>
@@ -75,6 +84,19 @@ export default function LandingPage() {
               Install
             </button>
           </div>
+        </div>
+      )}
+
+      {/* iOS Install Banner */}
+      {showIosBanner && (
+        <div className="fixed bottom-20 left-4 right-4 bg-white text-black rounded-2xl p-4 z-50 shadow-xl">
+          <div className="flex justify-between items-start mb-2">
+            <p className="font-black text-sm">Install drenZ App</p>
+            <button onClick={() => setShowIosBanner(false)} className="text-black/40 text-lg leading-none">×</button>
+          </div>
+          <p className="text-xs text-black/60 leading-relaxed">
+            Tap <span className="font-bold">Share</span> <span>⎋</span> then <span className="font-bold">"Add to Home Screen"</span> to install drenZ
+          </p>
         </div>
       )}
 
