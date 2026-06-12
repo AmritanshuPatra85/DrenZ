@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 
@@ -35,11 +35,48 @@ const TICKER = ["ZERO SCAMS", "QUALITY VERIFIED", "KIIT", "STUDENT ID VERIFIED",
 
 export default function LandingPage() {
   const [category, setCategory] = useState("All");
+  const [installPrompt, setInstallPrompt] = useState<any>(null)
+  const [showBanner, setShowBanner] = useState(false)
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault()
+      setInstallPrompt(e)
+      setShowBanner(true)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  const handleInstall = async () => {
+    if (!installPrompt) return
+    installPrompt.prompt()
+    const { outcome } = await installPrompt.userChoice
+    if (outcome === 'accepted') setShowBanner(false)
+  }
 
   const filtered = category === "All" ? FALLBACK : FALLBACK.filter(l => l.category === category);
 
   return (
     <main className="min-h-screen bg-brand-dark text-white pb-24">
+
+      {/* PWA Install Banner */}
+      {showBanner && (
+        <div className="fixed bottom-20 left-4 right-4 bg-brand-yellow text-black rounded-2xl p-4 flex items-center justify-between z-50 shadow-xl">
+          <div>
+            <p className="font-black text-sm">Install drenZ App</p>
+            <p className="text-xs opacity-70">Get the full campus experience</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setShowBanner(false)} className="text-xs px-3 py-2 rounded-full bg-black/10">
+              Later
+            </button>
+            <button onClick={handleInstall} className="text-xs px-3 py-2 rounded-full bg-black text-white font-bold">
+              Install
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Nav */}
       <div className="flex items-center justify-between px-5 pt-5 pb-2">
@@ -51,7 +88,6 @@ export default function LandingPage() {
 
       {/* Hero */}
       <div className="mx-4 mt-3 rounded-3xl p-7 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #1c1c12 0%, #2a2410 50%, #1c1c12 100%)" }}>
-        {/* Glow */}
         <div className="absolute top-0 right-0 w-48 h-48 rounded-full opacity-20" style={{ background: "radial-gradient(circle, #F5A623, transparent)", transform: "translate(30%, -30%)" }} />
 
         <span className="border border-white/30 text-white text-xs px-3 py-1 rounded-full mb-5 inline-block">KIIT</span>
@@ -129,17 +165,19 @@ export default function LandingPage() {
           })}
         </div>
       </div>
-    {/* Footer */}
-<div className="px-6 py-8 border-t border-white/10 mt-8">
-  <p className="text-white/30 text-xs text-center mb-3">drenZ · KIIT Campus Only</p>
-  <div className="flex justify-center gap-4 flex-wrap">
-    <a href="/legal#terms" className="text-white/30 text-xs hover:text-white/60">Terms</a>
-    <a href="/legal#privacy" className="text-white/30 text-xs hover:text-white/60">Privacy</a>
-    <a href="/legal#shipping" className="text-white/30 text-xs hover:text-white/60">Shipping</a>
-    <a href="/legal#refunds" className="text-white/30 text-xs hover:text-white/60">Refunds</a>
-    <a href="/legal#contact" className="text-white/30 text-xs hover:text-white/60">Contact</a>
-  </div>
-</div>
+
+      {/* Footer */}
+      <div className="px-6 py-8 border-t border-white/10 mt-8">
+        <p className="text-white/30 text-xs text-center mb-3">drenZ · KIIT Campus Only</p>
+        <div className="flex justify-center gap-4 flex-wrap">
+          <a href="/legal#terms" className="text-white/30 text-xs hover:text-white/60">Terms</a>
+          <a href="/legal#privacy" className="text-white/30 text-xs hover:text-white/60">Privacy</a>
+          <a href="/legal#shipping" className="text-white/30 text-xs hover:text-white/60">Shipping</a>
+          <a href="/legal#refunds" className="text-white/30 text-xs hover:text-white/60">Refunds</a>
+          <a href="/legal#contact" className="text-white/30 text-xs hover:text-white/60">Contact</a>
+        </div>
+      </div>
+
       <BottomNav />
     </main>
   );
