@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-const ALLOWED_DOMAINS = ["kiit.ac.in", "kiiit.ac.in"];
+const ALLOWED_DOMAINS = ["kiit.ac.in", "gmail.com"];
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   const email = data.user.email ?? "";
   const domain = email.split("@")[1];
 
-  if (!ALLOWED_DOMAINS.includes(domain)) {
+  if (!ALLOWED_DOMAINS.includes(domain) && !ALLOWED_EMAILS.includes(email)) {
     await supabase.auth.signOut();
     return NextResponse.redirect(
       `${origin}/login?error=invalid_domain`
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 
   // New user — redirect to onboarding
   if (!existingUser) {
-    return NextResponse.redirect(`${origin}/onboarding/whatsapp`);
+    return NextResponse.redirect(`${origin}/onboarding/alias`);
   }
 
   // Existing user but incomplete onboarding
