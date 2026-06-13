@@ -9,9 +9,6 @@ export const metadata: Metadata = {
   description: "Campus fashion marketplace",
   manifest: "/manifest.json",
   themeColor: "#F5A623",
-  icons: {
-    icon: '/favicon.ico',
-  },
 };
 
 export default function RootLayout({
