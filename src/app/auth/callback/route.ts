@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const ALLOWED_DOMAINS = ["kiit.ac.in"];
+const ALLOWED_DOMAINS = ["kiit.ac.in", "gmail.com"];
 const ADMIN_EMAILS = ["amritanshupatra01@gmail.com", "rsrs5012@gmail.com"];
 
 export async function GET(request: NextRequest) {
