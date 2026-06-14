@@ -33,10 +33,6 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -51,7 +47,6 @@ export async function middleware(request: NextRequest) {
   const isProtected = protectedRoutes.some((route) => pathname.startsWith(route));
   const isOnboarding = pathname.startsWith("/onboarding");
 
-  // Not logged in
   if (!user) {
     if (isProtected || isOnboarding) {
       return NextResponse.redirect(new URL("/login", request.url));
@@ -59,7 +54,6 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Admin bypasses all onboarding checks
   if (ADMIN_EMAILS.includes(user.email ?? "")) {
     if (isOnboarding) {
       return NextResponse.redirect(new URL("/admin", request.url));
@@ -67,14 +61,12 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Fetch profile
   const { data: profile } = await supabase
     .from("users")
     .select("phone, alias")
     .eq("id", user.id)
     .single();
 
-  // Ban check (after fetching profile)
   const { data: userRecord } = await supabase
     .from("users")
     .select("is_banned")
@@ -92,15 +84,15 @@ export async function middleware(request: NextRequest) {
     return redirectResponse;
   }
 
-const onboardingAlias = pathname.startsWith("/onboarding/alias") || pathname.startsWith("/alias-picker");
+  const onboardingAlias = pathname.startsWith("/onboarding/alias") || pathname.startsWith("/alias-picker");
 
-if (!profile?.alias && !onboardingAlias) {
-  return NextResponse.redirect(new URL("/onboarding/alias", request.url));
-}
+  if (!profile?.alias && !onboardingAlias) {
+    return NextResponse.redirect(new URL("/onboarding/alias", request.url));
+  }
 
-if (profile?.alias && isOnboarding) {
-  return NextResponse.redirect(new URL("/home", request.url));
-}
+  if (profile?.alias && isOnboarding) {
+    return NextResponse.redirect(new URL("/home", request.url));
+  }
 
   return supabaseResponse;
 }
