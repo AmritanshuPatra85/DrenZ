@@ -7,12 +7,20 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text()
   const signature = req.headers.get('x-razorpay-signature')
 
+  console.log('Webhook hit - signature:', signature)
+  console.log('Webhook secret exists:', !!process.env.RAZORPAY_WEBHOOK_SECRET)
+
   const expectedSignature = crypto
     .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
     .update(rawBody)
     .digest('hex')
 
+  console.log('Expected:', expectedSignature)
+  console.log('Received:', signature)
+  console.log('Match:', expectedSignature === signature)
+
   if (expectedSignature !== signature) {
+    console.error('Signature mismatch - rejecting')
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
@@ -103,7 +111,6 @@ export async function POST(req: NextRequest) {
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL!
 
-  // Insert in-app notifications
   await supabase.from('notifications').insert({
     user_id: buyerId,
     type: 'payment_success',
@@ -120,7 +127,6 @@ export async function POST(req: NextRequest) {
     data: { listing_id: listingId, razorpay_order_id: razorpayOrderId },
   })
 
-  // Send push notifications
   if (buyerData?.fcm_token) {
     await fetch(`${baseUrl}/api/send-notification`, {
       method: 'POST',
