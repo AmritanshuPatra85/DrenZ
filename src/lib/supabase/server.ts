@@ -1,4 +1,5 @@
 import { createServerClient as supabaseCreateServerClient } from "@supabase/ssr";
+import { createClient as supabaseCreateClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { Database } from "@/types/database.types";
 
@@ -25,5 +26,11 @@ export function createServerClient() {
   );
 }
 
-// Alias so API routes importing createClient work without changes
 export const createClient = createServerClient;
+
+export function createServiceRoleClient() {
+  return supabaseCreateClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}

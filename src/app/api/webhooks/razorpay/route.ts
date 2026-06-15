@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 
@@ -7,20 +7,12 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text()
   const signature = req.headers.get('x-razorpay-signature')
 
-  console.log('Webhook hit - signature:', signature)
-  console.log('Webhook secret exists:', !!process.env.RAZORPAY_WEBHOOK_SECRET)
-
   const expectedSignature = crypto
     .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
     .update(rawBody)
     .digest('hex')
 
-  console.log('Expected:', expectedSignature)
-  console.log('Received:', signature)
-  console.log('Match:', expectedSignature === signature)
-
   if (expectedSignature !== signature) {
-    console.error('Signature mismatch - rejecting')
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
@@ -42,7 +34,7 @@ export async function POST(req: NextRequest) {
   const useDelivery = notes?.use_delivery === 'true'
   const deliveryAddress = notes?.delivery_address ?? null
 
-  const supabase = createClient()
+  const supabase = createServiceRoleClient()
 
   const { data: existingTxn } = await supabase
     .from('transactions')
