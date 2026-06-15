@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
       amount: amountInPaise,
       currency: 'INR',
       receipt: listing_id,
+      payment_capture: 1,
       notes: {
         listing_id,
         buyer_id: user.id,
