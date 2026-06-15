@@ -149,11 +149,11 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
     })
   }, [])
 
-  const handlePaymentSuccess = useCallback(() => {
+  const handlePaymentSuccess = useCallback((response: RazorpaySuccessResponse) => {
     setShowConfetti(true)
     setPaymentError(null)
     redirectTimeoutRef.current = setTimeout(() => {
-      router.push("/home")
+      router.push(`/orders/${response.razorpay_order_id}`)
     }, 1300)
   }, [router])
 
@@ -206,7 +206,7 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         currency: orderResult.currency ?? "INR",
         name: "drenZ",
         description: listing.title,
-        handler: () => { handlePaymentSuccess() },
+        handler: (response) => { handlePaymentSuccess(response) },
         modal: { ondismiss: () => setIsPaying(false) },
         theme: { color: "#F5A623" },
       })
