@@ -94,16 +94,19 @@ export default function SearchPage() {
           <span className="text-[10px] font-semibold tracking-[0.25em] text-[#686D72] uppercase mb-3 block">
             DRENZ
           </span>
-          <h1 className="text-2xl md:text-4xl font-bold leading-tight tracking-tight">
-            FIND YOUR{" "}
-            <span className="text-[#E5FF00]">NEXT FIT.</span>
-          </h1>
-          <p className="mt-2 text-sm text-[#969696]">
-        {/* ── Search bar ── */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex-1 flex items-center bg-[#111111] border border-[#292929] rounded-xl px-4 gap-3 h-12 transition-colors duration-200 focus-with            Discover pieces from your campus.
-          </p>
-        </header>
+         <h1 className="text-2xl md:text-4xl font-bold leading-tight tracking-tight">
+  FIND YOUR{" "}
+  <span className="text-[#E5FF00]">NEXT FIT.</span>
+</h1>
+
+<p className="mt-2 text-sm text-[#969696]">
+  Discover pieces from your campus.
+</p>
+</header>
+
+{/* ── Search bar ── */}
+<div className="flex items-center gap-3 mb-6">
+  <div className="flex-1 flex items-center bg-[#111111] border border-[#292929] rounded-xl px-4 gap-3 h-12 transition-colors duration-200 focus-within:border-[#E5FF00]/30 focus-within:shadow-[0_0_0_3px_rgba(229,255,0,0.05)]">
 
 in:border-[#E5FF00]/30 focus-within:shadow-[0_0_0_3px_rgba(229,255,0,0.05)]">
             <svg
