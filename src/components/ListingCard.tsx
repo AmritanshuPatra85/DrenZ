@@ -16,6 +16,13 @@ type Listing = {
   is_liked?: boolean;
 };
 
+const COND: Record<string, string> = {
+  like_new: "Like New",
+  good: "Good",
+  fair: "Fair",
+  new: "New",
+};
+
 const GRAD: Record<string, string> = {
   tops: "linear-gradient(145deg,#121218,#1a1a2e)",
   bottoms: "linear-gradient(145deg,#121212,#1e1e2e)",
@@ -25,134 +32,197 @@ const GRAD: Record<string, string> = {
   outerwear: "linear-gradient(145deg,#121612,#1a2218)",
 };
 
-const EMOJI: Record<string, string> = {
-  tops: "👕", bottoms: "👖", shoes: "👟",
-  bags: "👜", accessories: "💍", outerwear: "🧥",
-};
-
-const COND: Record<string, string> = {
-  like_new: "Like New", good: "Good", fair: "Fair", new: "New",
-};
-
-/* ── inject styles once ── */
-let _css = false;
-
 export default function ListingCard({ listing }: { listing: Listing }) {
   const [liked, setLiked] = useState(listing.is_liked ?? false);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [sweepX, setSweepX] = useState(50);
   const [hov, setHov] = useState(false);
-  const [fine, setFine] = useState(true);
+  const [fine, setFine] = useState(false);
+  const [reduced, setReduced] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
     setFine(mq.matches);
-    if (_css || document.getElementById("lc-css")) return;
-    _css = true;
-    const s = document.createElement("style");
-    s.id = "lc-css";
-    s.textContent = STYLES;
-    document.head.appendChild(s);
+    const mqR = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mqR.matches);
   }, []);
 
   const cat = (listing.category || "").toLowerCase();
-  const condLabel = COND[(listing.condition || "").toLowerCase()] || listing.condition || "";
+  const condLabel =
+    COND[(listing.condition || "").toLowerCase()] ||
+    listing.condition ||
+    "";
   const sellerDisplay = listing.seller_alias
-    ? (listing.seller_alias.startsWith("@") ? listing.seller_alias : `@${listing.seller_alias}`)
+    ? listing.seller_alias.startsWith("@")
+      ? listing.seller_alias
+      : `@${listing.seller_alias}`
     : "";
+  const interactive = fine && !reduced;
 
   const onMove = (e: React.MouseEvent) => {
-    if (!ref.current || !fine) return;
+    if (!ref.current || !interactive) return;
     const r = ref.current.getBoundingClientRect();
     const nx = (e.clientX - r.left) / r.width;
     const ny = (e.clientY - r.top) / r.height;
-    setTilt({ x: (ny - 0.5) * -2, y: (nx - 0.5) * 2 });
+    setTilt({ x: (ny - 0.5) * -1.5, y: (nx - 0.5) * 1.5 });
     setSweepX(nx * 100);
   };
 
-  const onEnter = () => { if (fine) setHov(true); };
-  const onLeave = () => { setHov(false); setTilt({ x: 0, y: 0 }); setSweepX(50); };
+  const onEnter = () => {
+    if (interactive) setHov(true);
+  };
+
+  const onLeave = () => {
+    setHov(false);
+    setTilt({ x: 0, y: 0 });
+    setSweepX(50);
+  };
 
   return (
-    <Link href={`/listing/${listing.id}`} className="lc">
+    <Link
+      href={`/listing/${listing.id}`}
+      className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[#E5FF00] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080808]"
+    >
       <div
         ref={ref}
-        className={`lc__card ${hov ? "lc__card--h" : ""}`}
-        style={fine ? {
-          transform: `perspective(800px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
-          transition: hov
-            ? "transform .05s linear, box-shadow .35s, border-color .3s"
-            : "transform .4s cubic-bezier(.34,1.56,.64,1), box-shadow .35s, border-color .3s",
-        } : undefined}
+        className="relative overflow-hidden rounded-xl bg-[#151515] border border-[#292929] will-change-transform"
+        style={
+          interactive
+            ? {
+                transform: `perspective(800px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+                transition: hov
+                  ? "transform .05s linear, box-shadow .35s, border-color .3s"
+                  : "transform .4s cubic-bezier(.34,1.56,.64,1), box-shadow .35s, border-color .3s",
+                borderColor: hov
+                  ? "rgba(229,255,0,0.1)"
+                  : undefined,
+                boxShadow: hov
+                  ? "0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(229,255,0,0.03)"
+                  : undefined,
+              }
+            : undefined
+        }
         onMouseMove={onMove}
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
       >
         {/* ── IMAGE ── */}
-        <div className="lc__vis">
+        <div className="relative overflow-hidden aspect-[4/5]">
           {listing.image_url ? (
             <img
               src={listing.image_url}
               alt={listing.title}
-              className="lc__img"
+              className="w-full h-full object-cover block transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+              style={{
+                transform: hov ? "scale(1.04)" : "scale(1)",
+              }}
               loading="lazy"
             />
           ) : (
-            <div className="lc__ph" style={{ background: GRAD[cat] || GRAD.tops }}>
-              <span className="lc__emoji">{EMOJI[cat] || "👗"}</span>
-              <div className="lc__ph-grid" />
+            <div
+              className="w-full h-full relative flex items-center justify-center"
+              style={{ background: GRAD[cat] || GRAD.tops }}
+            >
+              {/* Subtle grid pattern */}
+              <div
+                className="absolute inset-0 opacity-[0.03]"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)",
+                  backgroundSize: "20px 20px",
+                }}
+              />
+              {/* Monochrome geometric icon */}
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="0.5"
+                className="text-[#686D72] opacity-20"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="12" cy="12" r="4" />
+              </svg>
             </div>
           )}
 
-          {/* Chrome light sweep following cursor */}
-          <div
-            className="lc__sweep"
-            style={{
-              left: `${sweepX - 25}%`,
-              opacity: hov ? 1 : 0,
-            }}
-          />
+          {/* Chrome sweep */}
+          {interactive && (
+            <div
+              className="absolute top-0 w-1/2 h-full pointer-events-none z-[2] transition-opacity duration-300"
+              style={{
+                left: `${sweepX - 25}%`,
+                opacity: hov ? 1 : 0,
+                background:
+                  "linear-gradient(90deg, transparent, rgba(191,195,199,0.06), transparent)",
+              }}
+            />
+          )}
 
           {/* Verified badge */}
-          <span className="lc__badge">
-            <span className="lc__badge-dot" />
+          <span className="absolute top-2.5 left-2.5 z-[3] inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md text-[8px] tracking-[0.18em] font-bold text-[#BFC3C7]">
+            <span className="w-[5px] h-[5px] rounded-full bg-[#E5FF00] shadow-[0_0_4px_rgba(229,255,0,0.4)] flex-shrink-0" />
             VERIFIED
           </span>
 
-          {/* Like button */}
+          {/* Heart / Like */}
           <button
-            className={`lc__heart ${liked ? "lc__heart--on" : ""}`}
-            aria-label="Save listing"
+            className={`absolute top-2.5 right-2.5 z-[3] w-[30px] h-[30px] rounded-full flex items-center justify-center border-none outline-none backdrop-blur-md transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-110 focus-visible:ring-2 focus-visible:ring-[#E5FF00] ${
+              liked
+                ? "bg-[#E5FF00]/15 text-[#E5FF00] shadow-[0_0_8px_rgba(229,255,0,0.3)]"
+                : "bg-black/40 text-white/70 hover:bg-[#E5FF00]/15 hover:text-[#E5FF00]"
+            }`}
+            aria-label={liked ? "Remove from saved" : "Save listing"}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               setLiked(!liked);
             }}
           >
-            {liked ? "♥" : "♡"}
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill={liked ? "currentColor" : "none"}
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+            </svg>
           </button>
 
-          {/* Size overlay */}
+          {/* Size badge */}
           {listing.size && (
-            <span className="lc__size">SIZE {listing.size.toUpperCase()}</span>
+            <span className="absolute bottom-2.5 right-2.5 z-[3] inline-flex items-center px-2.5 py-1 rounded-md bg-black/50 backdrop-blur-md text-[9px] tracking-[0.16em] font-semibold text-[#BFC3C7]">
+              SIZE {listing.size.toUpperCase()}
+            </span>
           )}
         </div>
 
         {/* ── BODY ── */}
-        <div className="lc__body">
-          <span className="lc__title">{listing.title}</span>
-          <span className="lc__price">₹{listing.price}</span>
+        <div className="px-3.5 py-3 flex flex-col gap-[3px]">
+          <span className="text-[13px] font-medium text-[#F5F5F5] truncate">
+            {listing.title}
+          </span>
+          <span className="text-lg font-bold text-[#E5FF00] tracking-[0.04em] leading-tight">
+            ₹{listing.price}
+          </span>
           {(listing.size || condLabel) && (
-            <span className="lc__meta">
+            <span className="text-[10px] text-[#969696] tracking-wide">
               {listing.size && `Size ${listing.size}`}
               {listing.size && condLabel && " · "}
               {condLabel}
             </span>
           )}
           {sellerDisplay && (
-            <span className="lc__seller">
-              {sellerDisplay}{listing.seller_dept ? ` · ${listing.seller_dept}` : ""}
+            <span className="text-[10px] text-[#686D72]">
+              {sellerDisplay}
+              {listing.seller_dept ? ` · ${listing.seller_dept}` : ""}
             </span>
           )}
         </div>
@@ -160,178 +230,3 @@ export default function ListingCard({ listing }: { listing: Listing }) {
     </Link>
   );
 }
-
-/* ═══════════════════════ STYLES ═══════════════════════ */
-
-const STYLES = `
-/* ── Link wrapper ── */
-.lc{
-  display:block;text-decoration:none;
-  outline:none;
-}
-.lc:focus-visible .lc__card{
-  outline:2px solid #E5FF00;outline-offset:2px;
-}
-
-/* ── Card ── */
-.lc__card{
-  background:#151515;
-  border:1px solid #292929;
-  border-radius:16px;
-  overflow:hidden;
-  will-change:transform;
-}
-.lc__card--h{
-  border-color:rgba(229,255,0,.12);
-  box-shadow:
-    0 18px 48px rgba(0,0,0,.45),
-    0 0 0 1px rgba(229,255,0,.04);
-}
-
-/* ── Visual area ── */
-.lc__vis{
-  position:relative;overflow:hidden;
-  aspect-ratio:3/4;
-}
-.lc__img{
-  width:100%;height:100%;
-  object-fit:cover;display:block;
-  transition:transform .5s cubic-bezier(.34,1.56,.64,1);
-}
-.lc__card--h .lc__img{transform:scale(1.04)}
-
-/* ── Placeholder ── */
-.lc__ph{
-  width:100%;height:100%;
-  display:flex;align-items:center;justify-content:center;
-  position:relative;
-}
-.lc__emoji{
-  font-size:3rem;opacity:.2;
-  transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .4s;
-}
-.lc__card--h .lc__emoji{transform:scale(1.1);opacity:.28}
-.lc__ph-grid{
-  position:absolute;inset:0;
-  background-image:
-    linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);
-  background-size:22px 22px;
-  pointer-events:none;
-}
-
-/* ── Chrome sweep ── */
-.lc__sweep{
-  position:absolute;top:0;
-  width:50%;height:100%;
-  background:linear-gradient(90deg,transparent,rgba(191,195,199,.08),transparent);
-  pointer-events:none;
-  transition:opacity .35s;
-  z-index:2;
-}
-
-/* ── Verified badge ── */
-.lc__badge{
-  position:absolute;top:10px;left:10px;z-index:3;
-  display:inline-flex;align-items:center;gap:5px;
-  font-size:8px;letter-spacing:.18em;font-weight:700;
-  padding:4px 10px 4px 8px;border-radius:100px;
-  background:rgba(0,0,0,.55);
-  backdrop-filter:blur(8px);
-  color:rgba(255,255,255,.7);
-}
-.lc__badge-dot{
-  width:5px;height:5px;border-radius:50%;
-  background:#E5FF00;flex-shrink:0;
-  box-shadow:0 0 4px rgba(229,255,0,.4);
-}
-
-/* ── Heart ── */
-.lc__heart{
-  position:absolute;top:10px;right:10px;z-index:3;
-  width:30px;height:30px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:14px;
-  background:rgba(0,0,0,.45);
-  backdrop-filter:blur(8px);
-  color:rgba(255,255,255,.75);
-  border:none;outline:none;
-  transition:all .25s cubic-bezier(.34,1.56,.64,1);
-}
-.lc__heart:hover{
-  background:rgba(229,255,0,.15);
-  color:#E5FF00;
-  transform:scale(1.15);
-}
-.lc__heart:focus-visible{
-  outline:2px solid #E5FF00;outline-offset:2px;
-}
-.lc__heart--on{
-  color:#E5FF00;
-  background:rgba(229,255,0,.12);
-  text-shadow:0 0 8px rgba(229,255,0,.3);
-}
-.lc__heart--on:hover{
-  background:rgba(229,255,0,.22);
-  transform:scale(1.15);
-}
-
-/* ── Size overlay ── */
-.lc__size{
-  position:absolute;bottom:10px;right:10px;z-index:3;
-  font-size:9px;letter-spacing:.18em;font-weight:600;
-  padding:4px 10px;border-radius:8px;
-  background:rgba(0,0,0,.55);
-  backdrop-filter:blur(8px);
-  color:#BFC3C7;
-}
-
-/* ── Body ── */
-.lc__body{
-  padding:14px 16px 16px;
-  display:flex;flex-direction:column;gap:4px;
-}
-.lc__title{
-  font-size:13px;font-weight:500;
-  color:#F5F5F5;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-.lc__price{
-  font-family:'Bebas Neue',sans-serif;
-  font-size:1.25rem;
-  color:#E5FF00;
-  letter-spacing:.03em;
-  transition:color .3s;
-}
-.lc__card--h .lc__price{color:#F2FF4A}
-.lc__meta{
-  font-size:10px;
-  color:#969696;
-  letter-spacing:.02em;
-}
-.lc__seller{
-  font-size:10px;
-  color:#686D72;
-}
-
-/* ── Responsive ── */
-@media(max-width:768px){
-  .lc__vis{aspect-ratio:4/5}
-  .lc__body{padding:10px 12px 12px}
-  .lc__title{font-size:12px}
-  .lc__price{font-size:1.1rem}
-  .lc__heart{width:28px;height:28px;font-size:13px}
-  .lc__badge{font-size:7px;padding:3px 8px 3px 6px}
-  .lc__badge-dot{width:4px;height:4px}
-  .lc__size{font-size:8px;padding:3px 8px}
-}
-
-/* ── Reduced motion ── */
-@media(prefers-reduced-motion:reduce){
-  .lc__card{transition:none!important;transform:none!important}
-  .lc__img{transition:none!important}
-  .lc__emoji{transition:none!important}
-  .lc__heart{transition:none!important}
-  .lc__sweep{display:none!important}
-}
-`;
