@@ -64,18 +64,30 @@ export default function TrustExplainerPage() {
   };
 
   return (
-    <main className="min-h-screen bg-brand-dark px-4 py-6 text-white sm:px-6">
+    <main className="min-h-screen bg-[#080808] px-4 py-6 text-[#F5F5F5] sm:px-6">
       <div className="mx-auto flex w-full max-w-md flex-col">
-        <div className="mb-5 flex justify-end">
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[10px] tracking-[0.25em] text-[#686D72] uppercase">
+            DRENZ / TRUST
+          </p>
           <Button
             type="button"
             variant="ghost"
-            className="h-auto px-2 py-1 text-brand-yellow hover:bg-transparent hover:text-brand-yellow/80"
+            className="h-auto px-2 py-1 text-[#686D72] text-[11px] tracking-[0.12em] uppercase hover:bg-transparent hover:text-[#E5FF00] transition-colors duration-200"
             onClick={handleSeenAndExit}
             disabled={isSaving}
           >
             Skip
           </Button>
+        </div>
+
+        <div className="mb-6">
+          <h1 className="text-xl font-bold tracking-tight leading-tight">
+            HOW DRENZ<br className="sm:hidden" /> KEEPS YOU SAFE
+          </h1>
+          <p className="mt-1 text-sm text-[#969696]">
+            Three simple rules behind every exchange.
+          </p>
         </div>
 
         <div
@@ -89,18 +101,25 @@ export default function TrustExplainerPage() {
 
             return (
               <div key={card.title} className="w-full shrink-0 snap-start">
-                <Card className="min-h-[72vh] bg-brand-card text-white ring-1 ring-white/10">
+                <Card className="min-h-[55vh] bg-[#111111] text-[#F5F5F5] border border-[#292929] rounded-xl">
                   <CardContent className="flex h-full flex-col items-center justify-center px-6 py-10 text-center sm:px-8">
-                    <Icon className="mb-7 h-16 w-16 text-brand-yellow" strokeWidth={2} />
-                    <h2 className="text-2xl font-bold leading-tight">{card.title}</h2>
-                    <p className="mt-3 text-sm text-white/80">{card.subtext}</p>
+                    <p className="mb-6 text-[11px] font-semibold tracking-[0.22em] text-[#686D72]">
+                      {String(index + 1).padStart(2, "0")}
+                    </p>
+                    <Icon className="mb-6 h-14 w-14 text-[#E5FF00] opacity-90" strokeWidth={1.5} />
+                    <h2 className="text-lg font-bold leading-tight tracking-tight">
+                      {card.title}
+                    </h2>
+                    <p className="mt-3 text-sm text-[#BFC3C7] leading-relaxed">
+                      {card.subtext}
+                    </p>
 
                     {isLast && (
                       <Button
                         type="button"
                         onClick={handleSeenAndExit}
                         disabled={isSaving}
-                        className="mt-10 h-10 w-full max-w-xs bg-brand-yellow font-semibold text-brand-dark hover:bg-brand-yellow/90"
+                        className="mt-10 h-11 w-full max-w-xs bg-[#E5FF00] text-[#080808] font-semibold tracking-[0.08em] text-xs hover:bg-[#F2FF4A] hover:shadow-[0_0_28px_rgba(229,255,0,0.3)] transition-all duration-200"
                       >
                         Got it
                       </Button>
@@ -116,12 +135,18 @@ export default function TrustExplainerPage() {
           {CARDS.map((card, index) => (
             <span
               key={card.title}
-              className={`h-2.5 w-2.5 rounded-full ${
-                index === currentIndex ? "bg-brand-yellow" : "bg-white/30"
+              className={`h-1.5 rounded-full transition-all duration-200 ${
+                index === currentIndex
+                  ? "w-6 bg-[#E5FF00]"
+                  : "w-1.5 bg-[#686D72]/40"
               }`}
             />
           ))}
         </div>
+
+        <p className="mt-3 text-center text-[10px] text-[#686D72] tracking-[0.16em] uppercase">
+          {String(currentIndex + 1).padStart(2, "0")} / {String(CARDS.length).padStart(2, "0")}
+        </p>
       </div>
     </main>
   );
