@@ -59,81 +59,179 @@ export default function PublicProfile() {
   }, [alias]);
 
   if (loading) return (
-    <main className="min-h-screen bg-brand-dark flex items-center justify-center">
-      <p className="text-white/30 text-sm">Loading…</p>
-    </main>
-  );
-
-  return (
-    <main className="min-h-screen bg-brand-dark text-white pb-24">
-
-      {/* Header */}
-      <div className="px-4 pt-5 pb-2 flex items-center gap-3">
-        <button onClick={() => router.back()} className="text-white/50 text-sm">← Back</button>
-        <div className="flex-1" />
-        <button className="text-white/30 text-xs border border-white/10 px-3 py-1.5 rounded-full">⚑ Report</button>
-      </div>
-
-      {/* Avatar + info */}
-      <div className="flex flex-col items-center px-4 mb-6">
-        <div className="w-20 h-20 rounded-full bg-brand-yellow/20 border-2 border-brand-yellow flex items-center justify-center text-3xl font-black text-brand-yellow mb-3">
-          {profile?.alias?.[0]?.toUpperCase() ?? "?"}
-        </div>
-        <h2 className="text-white font-black text-xl">{profile?.alias}</h2>
-        <p className="text-white/40 text-sm mt-1">{profile?.department} · {profile?.year}</p>
-        <p className="text-white/30 text-xs mt-1">
-          Member since {new Date(profile?.created_at).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
-        </p>
-
-        {/* Trust metrics */}
-        <div className="flex gap-4 mt-4">
-          <div className="text-center">
-            <p className="text-brand-yellow font-black text-lg">{profile?.avg_rating?.toFixed(1) ?? "—"}</p>
-            <p className="text-white/40 text-xs">Rating</p>
-          </div>
-          <div className="w-px bg-white/10" />
-          <div className="text-center">
-            <p className="text-brand-yellow font-black text-lg">{profile?.total_reviews ?? 0}</p>
-            <p className="text-white/40 text-xs">Reviews</p>
-          </div>
-          <div className="w-px bg-white/10" />
-          <div className="text-center">
-            <p className="text-brand-yellow font-black text-lg">{listings.length}</p>
-            <p className="text-white/40 text-xs">Active</p>
-          </div>
+    <main className="min-h-screen bg-[#080808] text-[#F5F5F5]">
+      {/* Header skeleton */}
+      <div className="border-b border-[#292929]">
+        <div className="mx-auto max-w-[1140px] flex items-center justify-between px-4 py-5 md:px-8">
+          <div className="h-2 w-12 bg-[#292929] rounded animate-pulse" />
+          <div className="h-2 w-24 bg-[#292929] rounded animate-pulse" />
         </div>
       </div>
-
-      {/* Active listings */}
-      {listings.length > 0 && (
-        <div className="px-4 mb-6">
-          <p className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-3">Active Listings</p>
-          <div className="grid grid-cols-2 gap-3">
-            {listings.map(l => <ListingCard key={l.id} listing={l} />)}
-          </div>
-        </div>
-      )}
-
-      {/* Reviews */}
-      {reviews.length > 0 && (
-        <div className="px-4 mb-6">
-          <p className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-3">Reviews</p>
-          <div className="space-y-3">
-            {reviews.map((r: any) => (
-              <div key={r.id} className="bg-brand-card border border-white/10 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-white font-semibold text-sm">{r.reviewer?.alias ?? r.reviewer_alias ?? "Anonymous"}</span>
-                    <span className="bg-brand-yellow/20 text-brand-yellow text-[9px] font-bold px-2 py-0.5 rounded-full">{r.badge ?? "Buyer"}</span>
-                  </div>
-                  <span className="text-brand-yellow text-sm">{"★".repeat(r.rating)}</span>
-                </div>
-                {r.comment && <p className="text-white/50 text-xs leading-relaxed">{r.comment}</p>}
+      <div className="mx-auto max-w-[1140px] px-4 pt-8 md:px-8">
+        {/* Hero skeleton */}
+        <div className="flex flex-col items-center mb-10">
+          <div className="w-24 h-24 rounded-full bg-[#292929] animate-pulse mb-5" />
+          <div className="h-5 w-36 bg-[#292929] rounded animate-pulse mb-2" />
+          <div className="h-3 w-28 bg-[#292929] rounded animate-pulse mb-2" />
+          <div className="h-2.5 w-40 bg-[#292929] rounded animate-pulse mb-5" />
+          <div className="flex items-center gap-5">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="text-center">
+                <div className="h-4 w-10 bg-[#292929] rounded animate-pulse mx-auto mb-1.5" />
+                <div className="h-2 w-12 bg-[#292929] rounded animate-pulse" />
               </div>
             ))}
           </div>
         </div>
-      )}
+        {/* Listings skeleton */}
+        <div className="mb-10">
+          <div className="h-2.5 w-28 bg-[#292929] rounded animate-pulse mb-4" />
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2].map(i => (
+              <div key={i} className="h-48 bg-[#292929] rounded-xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+        {/* Reviews skeleton */}
+        <div>
+          <div className="h-2.5 w-20 bg-[#292929] rounded animate-pulse mb-4" />
+          <div className="space-y-3">
+            {[1, 2].map(i => (
+              <div key={i} className="h-20 bg-[#292929] rounded-xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+      <BottomNav />
+    </main>
+  );
+
+  return (
+    <main className="min-h-screen bg-[#080808] text-[#F5F5F5] pb-24">
+      {/* ── Header ── */}
+      <header className="border-b border-[#292929]">
+        <div className="mx-auto max-w-[1140px] flex items-center justify-between px-4 py-5 md:px-8">
+          <button
+            onClick={() => router.back()}
+            aria-label="Go back"
+            className="flex items-center gap-2 text-[10px] tracking-[0.16em] text-[#686D72] hover:text-[#E5FF00] transition-colors duration-200 uppercase"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            BACK
+          </button>
+          <span className="text-[10px] tracking-[0.25em] text-[#686D72] uppercase">
+            DRENZ / PROFILE
+          </span>
+          <button
+            aria-label="Report user"
+            className="flex items-center gap-1.5 text-[10px] tracking-[0.12em] text-[#686D72] hover:text-[#e55555] transition-colors duration-200 uppercase"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+              <line x1="4" y1="22" x2="4" y2="15" />
+            </svg>
+            REPORT
+          </button>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-[1140px] px-4 pt-10 md:px-8">
+        {/* ── Profile hero ── */}
+        <div className="flex flex-col items-center mb-10">
+          <div className="w-24 h-24 rounded-full bg-[#151515] border border-[#E5FF00]/25 flex items-center justify-center mb-5">
+            <span className="text-3xl font-bold text-[#E5FF00]">
+              {profile?.alias?.[0]?.toUpperCase() ?? "?"}
+            </span>
+          </div>
+          <h1 className="text-xl lg:text-2xl font-bold text-[#F5F5F5] tracking-tight">
+            @{profile?.alias}
+          </h1>
+          <p className="text-[11px] text-[#969696] mt-1.5 tracking-wide">
+            {profile?.department} · {profile?.year}
+          </p>
+          <p className="text-[10px] text-[#686D72] mt-1 tracking-wide">
+            Member since {new Date(profile?.created_at).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
+          </p>
+
+          {/* Trust metrics */}
+          <div className="flex items-center gap-5 mt-6">
+            <div className="text-center">
+              <p className="text-base font-bold text-[#E5FF00]">{profile?.avg_rating?.toFixed(1) ?? "—"}</p>
+              <p className="text-[10px] text-[#686D72] tracking-[0.14em] uppercase mt-0.5">Rating</p>
+            </div>
+            <div className="w-px h-6 bg-[#292929]" />
+            <div className="text-center">
+              <p className="text-base font-bold text-[#E5FF00]">{profile?.total_reviews ?? 0}</p>
+              <p className="text-[10px] text-[#686D72] tracking-[0.14em] uppercase mt-0.5">Reviews</p>
+            </div>
+            <div className="w-px h-6 bg-[#292929]" />
+            <div className="text-center">
+              <p className="text-base font-bold text-[#E5FF00]">{listings.length}</p>
+              <p className="text-[10px] text-[#686D72] tracking-[0.14em] uppercase mt-0.5">Active</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Active listings ── */}
+        {listings.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-semibold tracking-[0.22em] text-[#686D72] uppercase">
+                Active Listings
+              </span>
+              <span className="text-[10px] text-[#686D72] tracking-wide">
+                {String(listings.length).padStart(2, "0")}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {listings.map(l => <ListingCard key={l.id} listing={l} />)}
+            </div>
+          </div>
+        )}
+
+        {/* ── Reviews ── */}
+        {reviews.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-semibold tracking-[0.22em] text-[#686D72] uppercase">
+                Reviews
+              </span>
+              <span className="text-[10px] text-[#686D72] tracking-wide">
+                {String(reviews.length).padStart(2, "0")}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {reviews.map((r: any) => (
+                <div
+                  key={r.id}
+                  className="bg-[#111111] border border-[#292929] rounded-xl p-4 transition-all duration-200 hover:border-[#686D72]/30"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13px] font-semibold text-[#F5F5F5]">
+                        {r.reviewer?.alias ?? r.reviewer_alias ?? "Anonymous"}
+                      </span>
+                      <span className="text-[9px] font-semibold tracking-[0.1em] text-[#686D72] uppercase border border-[#292929] rounded px-1.5 py-px">
+                        {r.badge ?? "Buyer"}
+                      </span>
+                    </div>
+                    <span className="text-[#E5FF00] text-sm tracking-wider">
+                      {"★".repeat(r.rating)}
+                    </span>
+                  </div>
+                  {r.comment && (
+                    <p className="text-[12px] text-[#969696] leading-relaxed">
+                      {r.comment}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       <BottomNav />
     </main>
